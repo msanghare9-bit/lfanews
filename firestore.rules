@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() {
+      return request.auth != null;
+    }
+    function estEditeur() {
+      return connecte()
+        && exists(/databases/$(database)/documents/editeurs/$(request.auth.uid));
+    }
+    function estAdmin() {
+      return estEditeur()
+        && get(/databases/$(database)/documents/editeurs/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Articles publiés : lisibles par tous, écrits par l'administrateur seul.
+    match /articles/{id} {
+      allow read: if true;
+      allow write: if estAdmin();
+      match /photos/{p} {
+        allow read: if true;
+        allow write: if estAdmin();
+      }
+    }
+
+    // Articles des élèves en attente de validation.
+    match /propositions/{id} {
+      allow read: if estAdmin()
+        || (estEditeur() && resource.data.auteurId == request.auth.uid);
+      allow create: if estEditeur()
+        && request.resource.data.auteurId == request.auth.uid;
+      allow update: if estAdmin()
+        || (estEditeur()
+            && resource.data.auteurId == request.auth.uid
+            && request.resource.data.auteurId == request.auth.uid);
+      allow delete: if estAdmin()
+        || (estEditeur() && resource.data.auteurId == request.auth.uid);
+
+      match /photos/{p} {
+        allow read: if estAdmin()
+          || (estEditeur()
+              && get(/databases/$(database)/documents/propositions/$(id)).data.auteurId == request.auth.uid);
+        allow create, update: if estAdmin()
+          || (estEditeur()
+              && getAfter(/databases/$(database)/documents/propositions/$(id)).data.auteurId == request.auth.uid);
+        allow delete: if estAdmin()
+          || (estEditeur()
+              && get(/databases/$(database)/documents/propositions/$(id)).data.auteurId == request.auth.uid);
+      }
+    }
+
+    match /editeurs/{uid} {
+      allow read: if connecte() && (request.auth.uid == uid || estAdmin());
+      allow write: if false;
+    }
+
+    match /config/{doc} {
+      allow read, write: if estAdmin();
+    }
+  }
+}

@@ -1,0 +1,36 @@
+name: lfanews
+description: Actualités du Lycée Franco-Arabe de Kébémer
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: any
+  firebase_auth: any
+  cloud_firestore: any
+  firebase_messaging: any
+  image_picker: any
+  image: any
+  intl: any
+  share_plus: any
+  http: any
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
+  fonts:
+    - family: Archivo
+      fonts:
+        - asset: assets/fonts/Archivo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Archivo-Bold.ttf
+          weight: 700
+    - family: ArchivoTitre
+      fonts:
+        - asset: assets/fonts/ArchivoTitre-ExtraBold.ttf
+          weight: 800

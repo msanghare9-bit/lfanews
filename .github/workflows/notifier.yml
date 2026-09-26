@@ -1,0 +1,20 @@
+name: Envoyer les notifications
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8-20/2 * * *'
+
+concurrency:
+  group: notifier
+  cancel-in-progress: false
+
+jobs:
+  notifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install google-auth requests
+      - run: python3 scripts/notifier.py
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}

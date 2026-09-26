@@ -1,0 +1,54 @@
+name: Construire l'APK
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'scripts/notifier.py'
+      - '.github/workflows/notifier.yml'
+      - 'firestore.rules'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Créer le projet Android
+        run: flutter create --org sn.lfakebemer --project-name lfanews --platforms android --no-pub app_build
+
+      - name: Copier le code de l'application
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          rm -rf app_build/lib app_build/test
+          cp -r lib app_build/lib
+          cp -r assets app_build/assets
+          cp pubspec.yaml app_build/pubspec.yaml
+          python3 scripts/prepare.py
+          echo "$KEYSTORE_B64" | base64 -d > app_build/android/app/upload.jks
+
+      - name: Construire l'APK
+        working-directory: app_build
+        env:
+          KS_PASS: ${{ secrets.KS_PASS }}
+        run: |
+          flutter pub get
+          flutter build apk --release --build-number=${{ github.run_number }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LFANEWS-apk
+          path: app_build/build/app/outputs/flutter-apk/app-release.apk

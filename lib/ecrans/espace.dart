@@ -7,6 +7,7 @@ import '../session.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'article.dart';
+import 'direct.dart';
 import 'redaction.dart';
 import 'statistiques.dart';
 
@@ -135,6 +136,16 @@ class _Espace extends StatelessWidget {
             icon: const Icon(Icons.add),
             label: const Text('Nouvel article'),
           ),
+          if (ed.estAdmin) ...[
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => LancerDirect(editeur: ed))),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
+              icon: const Icon(Icons.sensors),
+              label: const Text('Lancer un direct'),
+            ),
+          ],
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context)

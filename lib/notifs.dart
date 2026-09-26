@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import 'app.dart';
 import 'ecrans/article.dart';
+import 'ecrans/direct.dart';
 import 'modeles.dart';
 
 Future<void> initNotifications() async {
@@ -23,7 +24,9 @@ Future<void> initNotifications() async {
       ));
     });
     final initial = await m.getInitialMessage();
-    if (initial != null) _ouvrir(initial);
+    if (initial != null) {
+      Future.delayed(const Duration(milliseconds: 1900), () => _ouvrir(initial));
+    }
     await m.subscribeToTopic('tous');
   } catch (_) {
     // Sans connexion, l'abonnement sera retenté au prochain lancement.
@@ -31,6 +34,11 @@ Future<void> initNotifications() async {
 }
 
 Future<void> _ouvrir(RemoteMessage msg) async {
+  final direct = msg.data['directId'];
+  if (direct is String && direct.isNotEmpty) {
+    navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => PageDirect(directId: direct)));
+    return;
+  }
   final id = msg.data['articleId'];
   if (id is! String || id.isEmpty) return;
   try {

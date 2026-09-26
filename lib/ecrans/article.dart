@@ -11,6 +11,7 @@ import '../session.dart';
 import '../stats.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'direct.dart';
 import 'redaction.dart';
 
 class PageArticle extends StatefulWidget {
@@ -80,6 +81,7 @@ class _PageArticleState extends State<PageArticle> {
 
   @override
   Widget build(BuildContext context) {
+    if (a.directId.isNotEmpty) return PageDirect(directId: a.directId, articleId: a.id);
     return ValueListenableBuilder<Editeur?>(
       valueListenable: Session.instance.editeur,
       builder: (context, ed, _) {
@@ -120,7 +122,7 @@ class _PageArticleState extends State<PageArticle> {
                   else
                     _standard(principale),
                   if (galerie.isNotEmpty) _galerie(photos),
-                  if (!a.estProposition) _Reactions(id: a.id, equipe: ed != null),
+                  if (!a.estProposition) Reactions(id: a.id, equipe: ed != null),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -497,16 +499,16 @@ class Visionneuse extends StatelessWidget {
   }
 }
 
-class _Reactions extends StatefulWidget {
-  const _Reactions({required this.id, required this.equipe});
+class Reactions extends StatefulWidget {
+  const Reactions({required this.id, required this.equipe});
   final String id;
   final bool equipe;
 
   @override
-  State<_Reactions> createState() => _ReactionsState();
+  State<Reactions> createState() => _ReactionsState();
 }
 
-class _ReactionsState extends State<_Reactions> {
+class _ReactionsState extends State<Reactions> {
   String? _choix;
   late final Stream<int> _jaime = suivreJaime(widget.id);
   late final Stream<Stat> _stat = suivreStat(widget.id);

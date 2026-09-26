@@ -31,9 +31,18 @@ class TitreAppli extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const LogoLfa(),
+          const LogoLfa(taille: 38),
           const SizedBox(width: 10),
-          Text('LFA NEWS', style: titre(24, couleur: vert)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('LFA NEWS', style: titre(23, couleur: vert).copyWith(height: 1)),
+              const SizedBox(height: 2),
+              const Text('Lycée Franco-Arabe de Kébémer',
+                  style: TextStyle(fontSize: 11.5, color: gris, fontWeight: FontWeight.w400)),
+            ],
+          ),
         ],
       );
 }
@@ -218,3 +227,52 @@ Widget messageVide(String texte) => Padding(
       padding: const EdgeInsets.all(32),
       child: Text(texte, textAlign: TextAlign.center, style: const TextStyle(color: gris, fontSize: 15)),
     );
+
+const rougeDirect = Color(0xFFC62828);
+
+class BandeauDirect extends StatelessWidget {
+  const BandeauDirect({super.key, required this.direct, required this.onTap});
+  final Direct direct;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: rougeDirect,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, size: 8, color: rougeDirect),
+                    SizedBox(width: 4),
+                    Text('EN DIRECT',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: rougeDirect)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(direct.titre,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+              ),
+              if (direct.estMatch) ...[
+                const SizedBox(width: 8),
+                Text(direct.score, style: titre(18, couleur: Colors.white)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

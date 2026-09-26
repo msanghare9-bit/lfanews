@@ -17,11 +17,15 @@ Future<Uint8List?> choisirPhoto(ImageSource source) async {
 }
 
 /// Petite image pour la liste des articles (quelques dizaines de Ko).
-String vignetteDe(Uint8List octets) {
+String vignetteDe(Uint8List octets) => reduire((octets, 480));
+
+/// Réduit une image à [taille] pixels de côté au plus, en JPEG base64.
+String reduire((Uint8List, int) e) {
+  final (octets, taille) = e;
   final im = img.decodeImage(octets);
   if (im == null) return '';
-  final petite = im.width >= im.height
-      ? img.copyResize(im, width: 480)
-      : img.copyResize(im, height: 480);
+  final petite = im.width <= taille && im.height <= taille
+      ? im
+      : (im.width >= im.height ? img.copyResize(im, width: taille) : img.copyResize(im, height: taille));
   return base64Encode(img.encodeJpg(petite, quality: 60));
 }

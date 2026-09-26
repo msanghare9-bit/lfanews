@@ -39,7 +39,10 @@ class Article {
     required this.fonction,
     required this.citation,
     required this.qr,
+    this.directId = '',
   });
+
+  final String directId;
 
   final String id;
   final String collection; // 'articles' ou 'propositions'
@@ -93,6 +96,88 @@ class Article {
               .map((e) => QR((e['q'] ?? '').toString(), (e['r'] ?? '').toString()))
               .toList()
           : <QR>[],
+      directId: s('directId'),
     );
+  }
+}
+
+class Direct {
+  Direct({
+    required this.id,
+    required this.titre,
+    required this.equipeA,
+    required this.equipeB,
+    required this.scoreA,
+    required this.scoreB,
+    required this.enCours,
+    required this.debut,
+  });
+
+  final String id;
+  final String titre;
+  final String equipeA;
+  final String equipeB;
+  final int scoreA;
+  final int scoreB;
+  final bool enCours;
+  final DateTime debut;
+
+  bool get estMatch => equipeA.isNotEmpty && equipeB.isNotEmpty;
+  String get score => '$scoreA – $scoreB';
+
+  factory Direct.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? {};
+    int n(String k) => (d[k] as num?)?.toInt() ?? 0;
+    return Direct(
+      id: doc.id,
+      titre: (d['titre'] ?? '').toString(),
+      equipeA: (d['equipeA'] ?? '').toString(),
+      equipeB: (d['equipeB'] ?? '').toString(),
+      scoreA: n('scoreA'),
+      scoreB: n('scoreB'),
+      enCours: d['enCours'] == true,
+      debut: (d['debut'] is Timestamp) ? (d['debut'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+}
+
+class MessageDirect {
+  MessageDirect(this.id, this.texte, this.photo, this.date, this.auteurId, this.auteurNom);
+  final String id;
+  final String texte;
+  final String photo;
+  final DateTime date;
+  final String auteurId;
+  final String auteurNom;
+
+  late final Uint8List? octets = photo.isEmpty ? null : base64Decode(photo);
+
+  factory MessageDirect.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? {};
+    return MessageDirect(
+      doc.id,
+      (d['texte'] ?? '').toString(),
+      (d['photo'] ?? '').toString(),
+      (d['date'] is Timestamp) ? (d['date'] as Timestamp).toDate() : DateTime.now(),
+      (d['auteurId'] ?? '').toString(),
+      (d['auteurNom'] ?? '').toString(),
+    );
+  }
+}
+
+class Membre {
+  Membre(this.id, this.nom, this.role, this.classe, this.photo);
+  final String id;
+  final String nom;
+  final String role;
+  final String classe;
+  final String photo;
+
+  late final Uint8List? octets = photo.isEmpty ? null : base64Decode(photo);
+
+  factory Membre.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? {};
+    String s(String k) => (d[k] ?? '').toString();
+    return Membre(doc.id, s('nom'), s('role'), s('classe'), s('photo'));
   }
 }

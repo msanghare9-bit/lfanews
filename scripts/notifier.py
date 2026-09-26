@@ -75,4 +75,40 @@ for ligne in r.json():
         ).raise_for_status()
         envoyes += 1
 
+# --- Fils en direct qui viennent de commencer ---
+requete["structuredQuery"]["from"] = [{"collectionId": "directs"}]
+r = requests.post(BASE + ":runQuery", headers=H, json=requete, timeout=30)
+r.raise_for_status()
+for ligne in r.json():
+    doc = ligne.get("document")
+    if not doc:
+        continue
+    f = doc.get("fields", {})
+    ident = doc["name"].split("/")[-1]
+    if f.get("enCours", {}).get("booleanValue", False):
+        titre = f.get("titre", {}).get("stringValue", "Direct")
+        message = {
+            "message": {
+                "topic": "tous",
+                "notification": {"title": "EN DIRECT", "body": titre},
+                "data": {"directId": ident},
+                "android": {
+                    "priority": "HIGH",
+                    "notification": {"icon": "ic_notification", "color": "#C62828"},
+                },
+            }
+        }
+        s = requests.post(
+            f"https://fcm.googleapis.com/v1/projects/{projet}/messages:send",
+            headers=H, json=message, timeout=30,
+        )
+        print("direct", ident, s.status_code, s.text[:200])
+        if not s.ok:
+            continue
+        envoyes += 1
+    requests.patch(
+        f"{BASE}/directs/{ident}?updateMask.fieldPaths=notifie",
+        headers=H, json={"fields": {"notifie": {"booleanValue": True}}}, timeout=30,
+    ).raise_for_status()
+
 print(f"{envoyes} notification(s) envoyée(s).")

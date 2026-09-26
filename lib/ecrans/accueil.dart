@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import '../modeles.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../direct_service.dart';
+import 'apropos.dart';
 import 'article.dart';
+import 'direct.dart';
 import 'espace.dart';
 import 'recherche.dart';
 
@@ -23,6 +26,7 @@ class _AccueilState extends State<Accueil> {
       .orderBy('date', descending: true)
       .limit(150)
       .snapshots();
+  final _directs = directsEnCours();
 
   void _ouvrir(Article a) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => PageArticle(article: a)));
@@ -80,9 +84,23 @@ class _AccueilState extends State<Accueil> {
       corps = ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          StreamBuilder<List<Direct>>(
+            stream: _directs,
+            builder: (context, s) => Column(
+              children: [
+                for (final d in s.data ?? const <Direct>[])
+                  BandeauDirect(
+                    direct: d,
+                    onTap: () => Navigator.of(context)
+                        .push(MaterialPageRoute(builder: (_) => PageDirect(directId: d.id))),
+                  ),
+              ],
+            ),
+          ),
           if (urgents.isNotEmpty)
             BandeauUrgent(article: urgents.first, onTap: () => _ouvrir(urgents.first)),
           _puces(),
+          if (_categorie == null) const CarteBienvenue(),
           if (liste.isEmpty) messageVide('Aucun article dans cette rubrique pour le moment.'),
           if (une != null)
             Padding(
@@ -101,6 +119,14 @@ class _AccueilState extends State<Accueil> {
       appBar: AppBar(
         titleSpacing: 16,
         title: const TitreAppli(),
+        actions: [
+          IconButton(
+            tooltip: 'À propos de LFA News',
+            icon: const Icon(Icons.info_outline, color: vert),
+            onPressed: () =>
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PageAPropos())),
+          ),
+        ],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, color: bordure),

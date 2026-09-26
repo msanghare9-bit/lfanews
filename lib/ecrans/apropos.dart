@@ -1,0 +1,402 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../app.dart';
+import '../images.dart';
+import '../modeles.dart';
+import '../session.dart';
+import '../theme.dart';
+import '../widgets.dart';
+
+const _messageParDefaut =
+    'Bienvenue sur LFA News, le journal du Lycée Franco-Arabe de Kébémer. Ici, vous trouverez les annonces '
+    "de l'établissement, les dates importantes et la vie de nos élèves, racontée par l'équipe de rédaction "
+    "du club. Bonne lecture, et n'hésitez pas à partager nos articles.";
+const _signatureParDefaut = 'La rédaction de LFA News';
+
+final _config = FirebaseFirestore.instance.collection('config').doc('accueil');
+final _equipe = FirebaseFirestore.instance.collection('equipe');
+
+class Bienvenue {
+  const Bienvenue(this.message, this.signature);
+  final String message;
+  final String signature;
+}
+
+Stream<Bienvenue> suivreBienvenue() => _config.snapshots().map((d) {
+      final m = d.data();
+      final msg = (m?['message'] ?? '').toString().trim();
+      final sig = (m?['signature'] ?? '').toString().trim();
+      return Bienvenue(msg.isEmpty ? _messageParDefaut : msg, msg.isEmpty ? _signatureParDefaut : sig);
+    }).handleError((_) {});
+
+/// Carte de bienvenue en haut de l'accueil. Chaque lecteur peut la fermer ;
+/// elle réapparaît si le message change.
+class CarteBienvenue extends StatefulWidget {
+  const CarteBienvenue({super.key});
+
+  @override
+  State<CarteBienvenue> createState() => _CarteBienvenueState();
+}
+
+class _CarteBienvenueState extends State<CarteBienvenue> {
+  late final Stream<Bienvenue> _flux = suivreBienvenue();
+  String? _fermee;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (mounted) setState(() => _fermee = p.getString('bienvenue_fermee') ?? '');
+    });
+  }
+
+  Future<void> _fermer(String message) async {
+    setState(() => _fermee = message.hashCode.toString());
+    final p = await SharedPreferences.getInstance();
+    await p.setString('bienvenue_fermee', message.hashCode.toString());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_fermee == null) return const SizedBox.shrink();
+    return StreamBuilder<Bienvenue>(
+      stream: _flux,
+      initialData: const Bienvenue(_messageParDefaut, _signatureParDefaut),
+      builder: (context, s) {
+        final b = s.data!;
+        if (_fermee == b.message.hashCode.toString()) return const SizedBox.shrink();
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 6, 14),
+          decoration: BoxDecoration(color: vertPale, borderRadius: BorderRadius.circular(14)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text('Bienvenue', style: titre(20, couleur: vert))),
+                  IconButton(
+                    tooltip: 'Fermer',
+                    icon: const Icon(Icons.close, size: 20, color: gris),
+                    onPressed: () => _fermer(b.message),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(b.message, style: const TextStyle(fontSize: 15, height: 1.5)),
+                    if (b.signature.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(b.signature,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: vert)),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class PageAPropos extends StatelessWidget {
+  const PageAPropos({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Editeur?>(
+      valueListenable: Session.instance.editeur,
+      builder: (context, ed, _) {
+        final admin = ed?.estAdmin ?? false;
+        return Scaffold(
+          appBar: AppBar(title: Text('À propos', style: titre(22))),
+          floatingActionButton: admin
+              ? FloatingActionButton.extended(
+                  onPressed: () => Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => const EditerMembre())),
+                  backgroundColor: vert,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.person_add_alt),
+                  label: const Text('Ajouter un membre'),
+                )
+              : null,
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+            children: [
+              const Center(child: LogoLfa(taille: 96)),
+              const SizedBox(height: 12),
+              Center(child: Text('LFA NEWS', style: titre(30, couleur: vert))),
+              const SizedBox(height: 4),
+              const Center(
+                child: Text('Le journal du Lycée Franco-Arabe de Kébémer',
+                    textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: gris)),
+              ),
+              const SizedBox(height: 24),
+              StreamBuilder<Bienvenue>(
+                stream: suivreBienvenue(),
+                initialData: const Bienvenue(_messageParDefaut, _signatureParDefaut),
+                builder: (context, s) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text('Le mot de bienvenue',
+                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                        ),
+                        if (admin)
+                          TextButton.icon(
+                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => EditerBienvenue(actuel: s.data!))),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            label: const Text('Modifier'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(s.data!.message, style: const TextStyle(fontSize: 15, height: 1.55)),
+                    const SizedBox(height: 8),
+                    Text(s.data!.signature,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: vert)),
+                  ],
+                ),
+              ),
+              const Divider(height: 40, color: bordure),
+              const Text("L'équipe de la rédaction", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _equipe.orderBy('ordre').snapshots(),
+                builder: (context, s) {
+                  if (!s.hasData) {
+                    return const Padding(
+                        padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()));
+                  }
+                  final membres = s.data!.docs.map(Membre.fromDoc).toList();
+                  if (membres.isEmpty) {
+                    return const Text("La présentation de l'équipe arrive bientôt.",
+                        style: TextStyle(color: gris));
+                  }
+                  return Column(
+                    children: [
+                      for (final m in membres)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              ClipOval(
+                                child: SizedBox(
+                                  width: 64,
+                                  height: 64,
+                                  child: Photo(octets: m.octets, icone: Icons.person_outline),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(m.nom, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 2),
+                                    Text(m.role,
+                                        style: const TextStyle(
+                                            fontSize: 14, color: vert, fontWeight: FontWeight.w700)),
+                                    if (m.classe.isNotEmpty)
+                                      Text(m.classe, style: const TextStyle(fontSize: 13, color: gris)),
+                                  ],
+                                ),
+                              ),
+                              if (admin)
+                                IconButton(
+                                  tooltip: 'Modifier',
+                                  icon: const Icon(Icons.edit_outlined, color: gris),
+                                  onPressed: () => Navigator.of(context)
+                                      .push(MaterialPageRoute(builder: (_) => EditerMembre(membre: m))),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class EditerBienvenue extends StatefulWidget {
+  const EditerBienvenue({super.key, required this.actuel});
+  final Bienvenue actuel;
+
+  @override
+  State<EditerBienvenue> createState() => _EditerBienvenueState();
+}
+
+class _EditerBienvenueState extends State<EditerBienvenue> {
+  late final _message = TextEditingController(text: widget.actuel.message);
+  late final _signature = TextEditingController(text: widget.actuel.signature);
+
+  void _enregistrer() {
+    unawaited(_config
+        .set({'message': _message.text.trim(), 'signature': _signature.text.trim()})
+        .catchError((e) => afficher('Échec : $e')));
+    afficher('Message de bienvenue enregistré.');
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Message de bienvenue')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _message,
+            minLines: 6,
+            maxLines: null,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Message'),
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: _signature, decoration: const InputDecoration(labelText: 'Signature')),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _enregistrer, child: const Text('Enregistrer')),
+        ],
+      ),
+    );
+  }
+}
+
+class EditerMembre extends StatefulWidget {
+  const EditerMembre({super.key, this.membre});
+  final Membre? membre;
+
+  @override
+  State<EditerMembre> createState() => _EditerMembreState();
+}
+
+class _EditerMembreState extends State<EditerMembre> {
+  late final _nom = TextEditingController(text: widget.membre?.nom ?? '');
+  late final _role = TextEditingController(text: widget.membre?.role ?? '');
+  late final _classe = TextEditingController(text: widget.membre?.classe ?? '');
+  late String _photo = widget.membre?.photo ?? '';
+  late Uint8List? _apercu = widget.membre?.octets;
+
+  Future<void> _choisir(ImageSource source) async {
+    final b = await choisirPhoto(source);
+    if (b == null) return;
+    final petite = await compute(reduire, (b, 320));
+    setState(() {
+      _photo = petite;
+      _apercu = b;
+    });
+  }
+
+  void _enregistrer() {
+    if (_nom.text.trim().isEmpty || _role.text.trim().isEmpty) {
+      afficher('Indiquez au moins le nom et le rôle.');
+      return;
+    }
+    final data = {
+      'nom': _nom.text.trim(),
+      'role': _role.text.trim(),
+      'classe': _classe.text.trim(),
+      'photo': _photo,
+    };
+    final m = widget.membre;
+    if (m == null) {
+      unawaited(_equipe.add({...data, 'ordre': DateTime.now().millisecondsSinceEpoch})
+          .then((_) {})
+          .catchError((e) => afficher('Échec : $e')));
+    } else {
+      unawaited(_equipe.doc(m.id).update(data).catchError((e) => afficher('Échec : $e')));
+    }
+    afficher('Équipe mise à jour.');
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _retirer() async {
+    final m = widget.membre;
+    if (m == null) return;
+    final oui = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Retirer ${m.nom} de l’équipe ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Retirer')),
+        ],
+      ),
+    );
+    if (oui != true) return;
+    unawaited(_equipe.doc(m.id).delete().catchError((e) => afficher('Échec : $e')));
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.membre == null ? 'Nouveau membre' : 'Modifier le membre'),
+        actions: [
+          if (widget.membre != null)
+            IconButton(tooltip: 'Retirer', icon: const Icon(Icons.delete_outline), onPressed: _retirer),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Center(
+            child: ClipOval(
+              child: SizedBox(width: 110, height: 110, child: Photo(octets: _apercu, icone: Icons.person_outline)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () => _choisir(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Galerie'),
+              ),
+              TextButton.icon(
+                onPressed: () => _choisir(ImageSource.camera),
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: const Text('Appareil'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: _nom, decoration: const InputDecoration(labelText: 'Prénom et nom')),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _role,
+            decoration: const InputDecoration(
+                labelText: 'Rôle', hintText: 'Rédactrice, photographe, relecteur, responsable…'),
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: _classe, decoration: const InputDecoration(labelText: 'Classe (facultatif)')),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _enregistrer, child: const Text('Enregistrer')),
+        ],
+      ),
+    );
+  }
+}

@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'article.dart';
 import 'redaction.dart';
+import 'statistiques.dart';
 
 class EspaceRedaction extends StatelessWidget {
   const EspaceRedaction({super.key});
@@ -133,6 +134,19 @@ class _Espace extends StatelessWidget {
                 .push(MaterialPageRoute(builder: (_) => Redaction(editeur: ed))),
             icon: const Icon(Icons.add),
             label: const Text('Nouvel article'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const Statistiques())),
+            icon: const Icon(Icons.bar_chart),
+            label: const Text('Statistiques'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+              foregroundColor: vert,
+              side: const BorderSide(color: vert),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           ),
           const SizedBox(height: 26),
           Text(ed.estAdmin ? 'Articles à valider' : 'Mes articles en attente de validation',

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import '../app.dart';
 import '../modeles.dart';
 import '../publication.dart';
 import '../session.dart';
+import '../stats.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'redaction.dart';
@@ -22,8 +24,59 @@ class PageArticle extends StatefulWidget {
 class _PageArticleState extends State<PageArticle> {
   late final Future<List<Uint8List>> _photos = chargerPhotos(widget.article);
   bool _occupe = false;
+  final _defilement = ScrollController();
+  final _ouverture = DateTime.now();
+  Timer? _minuteur;
 
   Article get a => widget.article;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!a.estProposition) {
+      compterVue(a.id);
+      // Lu : resté au moins 20 secondes, ou arrivé en bas après 8 secondes.
+      _minuteur = Timer(const Duration(seconds: 20), () => compterLecture(a.id));
+      _defilement.addListener(() {
+        final pos = _defilement.position;
+        final enBas = pos.maxScrollExtent > 0 && pos.pixels >= pos.maxScrollExtent - 40;
+        if (enBas && DateTime.now().difference(_ouverture).inSeconds >= 8) compterLecture(a.id);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _minuteur?.cancel();
+    _defilement.dispose();
+    super.dispose();
+  }
+
+  Widget _barreStats() {
+    return StreamBuilder<Stat>(
+      stream: suivreStat(a.id),
+      builder: (context, s) {
+        final st = s.data ?? const Stat(0, 0);
+        return Container(
+          color: vertPale,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+          child: Row(
+            children: [
+              const Icon(Icons.visibility_outlined, size: 18, color: vert),
+              const SizedBox(width: 6),
+              Text('${st.vues} vues', style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(width: 16),
+              const Icon(Icons.menu_book_outlined, size: 18, color: vert),
+              const SizedBox(width: 6),
+              Text('${st.lectures} lectures', style: const TextStyle(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              const Text('Rédaction seulement', style: TextStyle(fontSize: 12, color: gris)),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +110,9 @@ class _PageArticleState extends State<PageArticle> {
                 ],
               ),
               body: ListView(
+                controller: _defilement,
                 children: [
+                  if (ed != null && !a.estProposition) _barreStats(),
                   if (a.estInterview)
                     _interview(principale)
                   else if (a.estPortrait)
@@ -65,6 +120,7 @@ class _PageArticleState extends State<PageArticle> {
                   else
                     _standard(principale),
                   if (galerie.isNotEmpty) _galerie(photos),
+                  if (!a.estProposition) _Reactions(id: a.id, equipe: ed != null),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -436,6 +492,95 @@ class Visionneuse extends StatelessWidget {
         itemBuilder: (_, i) => InteractiveViewer(
           child: Center(child: Image.memory(photos[i], fit: BoxFit.contain)),
         ),
+      ),
+    );
+  }
+}
+
+class _Reactions extends StatefulWidget {
+  const _Reactions({required this.id, required this.equipe});
+  final String id;
+  final bool equipe;
+
+  @override
+  State<_Reactions> createState() => _ReactionsState();
+}
+
+class _ReactionsState extends State<_Reactions> {
+  String? _choix;
+  late final Stream<int> _jaime = suivreJaime(widget.id);
+  late final Stream<Stat> _stat = suivreStat(widget.id);
+
+  @override
+  void initState() {
+    super.initState();
+    maReaction(widget.id).then((v) {
+      if (mounted) setState(() => _choix = v);
+    });
+  }
+
+  void _toucher(String c) {
+    final apres = _choix == c ? null : c;
+    reagir(widget.id, _choix, apres);
+    setState(() => _choix = apres);
+  }
+
+  Widget _bouton(IconData vide, IconData plein, String texte, bool choisi, VoidCallback onTap) {
+    return Expanded(
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(choisi ? plein : vide, size: 20),
+        label: Text(texte, overflow: TextOverflow.ellipsis),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(46),
+          backgroundColor: choisi ? vert : Colors.white,
+          foregroundColor: choisi ? Colors.white : vert,
+          side: const BorderSide(color: vert),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 1, color: bordure),
+          const SizedBox(height: 16),
+          const Text('Cet article vous a plu ?', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              StreamBuilder<int>(
+                stream: _jaime,
+                builder: (context, s) {
+                  final n = s.data ?? 0;
+                  return _bouton(Icons.thumb_up_alt_outlined, Icons.thumb_up, n > 0 ? "J'aime · $n" : "J'aime",
+                      _choix == 'aime', () => _toucher('aime'));
+                },
+              ),
+              const SizedBox(width: 10),
+              if (widget.equipe)
+                StreamBuilder<Stat>(
+                  stream: _stat,
+                  builder: (context, s) => _bouton(Icons.thumb_down_alt_outlined, Icons.thumb_down,
+                      "Je n'aime pas · ${s.data?.jaimepas ?? 0}", _choix == 'aimepas', () => _toucher('aimepas')),
+                )
+              else
+                _bouton(Icons.thumb_down_alt_outlined, Icons.thumb_down, "Je n'aime pas", _choix == 'aimepas',
+                    () => _toucher('aimepas')),
+            ],
+          ),
+          if (widget.equipe) ...[
+            const SizedBox(height: 6),
+            const Text("Le nombre de « je n'aime pas » n'est visible que par la rédaction.",
+                style: TextStyle(fontSize: 12, color: gris)),
+          ],
+        ],
       ),
     );
   }

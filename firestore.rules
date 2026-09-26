@@ -50,6 +50,32 @@ service cloud.firestore {
       }
     }
 
+    // Compteurs de vues, de lectures et de « je n'aime pas » :
+    // chaque lecteur ajoute ou retire 1, seule la rédaction voit les chiffres.
+    match /stats/{id} {
+      allow read: if estEditeur();
+      allow create: if request.resource.data.keys().hasOnly(['vues', 'lectures', 'jaimepas'])
+        && request.resource.data.get('vues', 1) == 1
+        && request.resource.data.get('lectures', 1) == 1
+        && request.resource.data.get('jaimepas', 1) == 1;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['vues', 'lectures', 'jaimepas'])
+        && request.resource.data.get('vues', 0) - resource.data.get('vues', 0) in [0, 1]
+        && request.resource.data.get('lectures', 0) - resource.data.get('lectures', 0) in [0, 1]
+        && request.resource.data.get('jaimepas', 0) - resource.data.get('jaimepas', 0) in [-1, 0, 1]
+        && request.resource.data.get('jaimepas', 0) >= 0;
+    }
+
+    // « J'aime » : visibles par tous.
+    match /reactions/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['jaime'])
+        && request.resource.data.jaime == 1;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['jaime'])
+        && request.resource.data.jaime - resource.data.get('jaime', 0) in [-1, 1]
+        && request.resource.data.jaime >= 0;
+    }
+
     match /editeurs/{uid} {
       allow read: if connecte() && (request.auth.uid == uid || estAdmin());
       allow write: if false;

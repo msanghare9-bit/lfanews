@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "148054856677",
+    "project_id": "lfanews",
+    "storage_bucket": "lfanews.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:148054856677:android:9d4f3bf8754d1dbc1b150c",
+        "android_client_info": {
+          "package_name": "sn.lfakebemer.lfanews"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOg2_mdNgj0qV9IjYSuygc17Odvg7rHII"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

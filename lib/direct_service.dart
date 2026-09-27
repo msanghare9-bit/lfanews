@@ -99,6 +99,18 @@ void supprimerMessage(String directId, String messageId) {
 }
 
 /// Termine le direct et le range comme article dans la rubrique choisie.
+/// Supprime un direct encore en cours, sans le publier comme article :
+/// utile si l'administrateur l'a lancé par erreur.
+Future<void> supprimerDirect(String directId) async {
+  final q = await directs.doc(directId).collection('messages').get();
+  final lot = _db.batch();
+  for (final m in q.docs) {
+    lot.delete(m.reference);
+  }
+  lot.delete(directs.doc(directId));
+  await lot.commit().timeout(const Duration(seconds: 12), onTimeout: () {});
+}
+
 Future<void> terminerDirect(Editeur ed, Direct d, String categorie) async {
   final q = await directs.doc(d.id).collection('messages').orderBy('date').get();
   final messages = q.docs.map(MessageDirect.fromDoc).toList();

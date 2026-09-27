@@ -65,8 +65,14 @@ class _PageDirectState extends State<PageDirect> {
                 ],
               ),
               actions: [
-                if (ed != null && ed.estAdmin && d.enCours)
+                if (ed != null && ed.estAdmin && d.enCours) ...[
+                  IconButton(
+                    tooltip: 'Supprimer ce direct',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _supprimer(context, d),
+                  ),
                   TextButton(onPressed: () => _terminer(context, ed, d), child: const Text('Terminer')),
+                ],
               ],
             ),
             body: ListView(
@@ -97,6 +103,28 @@ class _PageDirectState extends State<PageDirect> {
         },
       ),
     );
+  }
+
+  Future<void> _supprimer(BuildContext context, Direct d) async {
+    final oui = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Supprimer ce direct ?'),
+        content: const Text('Le direct et toutes ses mises à jour seront définitivement supprimés, sans être publiés comme article.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Supprimer')),
+        ],
+      ),
+    );
+    if (oui != true) return;
+    try {
+      await supprimerDirect(d.id);
+      afficher('Direct supprimé.');
+      if (context.mounted) Navigator.of(context).pop();
+    } catch (e) {
+      afficher('Échec : $e');
+    }
   }
 
   Future<void> _terminer(BuildContext context, Editeur ed, Direct d) async {

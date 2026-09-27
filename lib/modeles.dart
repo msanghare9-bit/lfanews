@@ -11,6 +11,7 @@ const categories = [
   'Sport et Culture',
   'Interview',
   'Portrait',
+  'La Communauté',
 ];
 
 class QR {

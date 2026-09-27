@@ -8,6 +8,7 @@ class Editeur {
   final String nom;
   final String role;
   bool get estAdmin => role == 'admin';
+  bool get peutCours => role == 'admin' || role == 'professeur';
 }
 
 class Session {

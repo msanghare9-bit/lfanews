@@ -521,17 +521,31 @@ class _ReactionsState extends State<Reactions> {
     });
   }
 
+  bool _rebond = false;
+
   void _toucher(String c) {
     final apres = _choix == c ? null : c;
     reagir(widget.id, _choix, apres);
-    setState(() => _choix = apres);
+    setState(() {
+      _choix = apres;
+      _rebond = apres != null;
+    });
   }
 
   Widget _bouton(IconData vide, IconData plein, String texte, bool choisi, VoidCallback onTap) {
     return Expanded(
       child: OutlinedButton.icon(
         onPressed: onTap,
-        icon: Icon(choisi ? plein : vide, size: 20),
+        icon: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 1, end: (choisi && _rebond) ? 1.35 : 1),
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.elasticOut,
+          onEnd: () {
+            if (_rebond) setState(() => _rebond = false);
+          },
+          builder: (context, v, child) => Transform.scale(scale: v, child: child),
+          child: Icon(choisi ? plein : vide, size: 20),
+        ),
         label: Text(texte, overflow: TextOverflow.ellipsis),
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(46),

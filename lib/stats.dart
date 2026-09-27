@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final _stats = FirebaseFirestore.instance.collection('stats');
 final _reactions = FirebaseFirestore.instance.collection('reactions');
+final _compteurs = FirebaseFirestore.instance.collection('compteurs').doc('app');
 
 class Stat {
   const Stat(this.vues, this.lectures, [this.jaimepas = 0]);
@@ -78,4 +79,26 @@ Future<(Map<String, Stat>, Map<String, int>)> chargerToutesStats() async {
     {for (final d in s.docs) d.id: statDe(d.data())},
     {for (final d in r.docs) d.id: _n(d.data(), 'jaime')},
   );
+}
+
+/// Compte ce téléphone une seule fois, au tout premier lancement.
+Future<void> compterInstallation() async {
+  if (FirebaseAuth.instance.currentUser != null) return;
+  try {
+    final p = await SharedPreferences.getInstance();
+    if (p.getBool('installation_comptee') ?? false) return;
+    await p.setBool('installation_comptee', true);
+    unawaited(_compteurs
+        .set({'installations': FieldValue.increment(1)}, SetOptions(merge: true))
+        .catchError((_) {}));
+  } catch (_) {}
+}
+
+Future<int> nombreInstallations() async {
+  try {
+    final d = await _compteurs.get();
+    return _n(d.data(), 'installations');
+  } catch (_) {
+    return 0;
+  }
 }

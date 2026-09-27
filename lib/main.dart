@@ -7,6 +7,7 @@ import 'ecrans/accueil.dart';
 import 'firebase_options.dart';
 import 'notifs.dart';
 import 'session.dart';
+import 'stats.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -15,6 +16,7 @@ Future<void> main() async {
   await Firebase.initializeApp(options: firebaseOptions);
   await initializeDateFormatting('fr_FR');
   Session.instance.demarrer();
+  compterInstallation();
   runApp(const LfaNewsApp());
   initNotifications();
 }

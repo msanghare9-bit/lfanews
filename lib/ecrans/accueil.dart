@@ -7,6 +7,7 @@ import '../widgets.dart';
 import '../direct_service.dart';
 import 'apropos.dart';
 import 'article.dart';
+import 'cours.dart';
 import 'direct.dart';
 import 'espace.dart';
 import 'recherche.dart';
@@ -44,6 +45,7 @@ class _AccueilState extends State<Accueil> {
             children: [
               _fil(snap, articles),
               Recherche(articles: articles),
+              const Cours0(),
               const EspaceRedaction(),
             ],
           ),
@@ -57,6 +59,8 @@ class _AccueilState extends State<Accueil> {
                   icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: vert), label: 'Accueil'),
               NavigationDestination(
                   icon: Icon(Icons.search), selectedIcon: Icon(Icons.search, color: vert), label: 'Rechercher'),
+              NavigationDestination(
+                  icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book, color: vert), label: 'Cours'),
               NavigationDestination(
                   icon: Icon(Icons.edit_outlined), selectedIcon: Icon(Icons.edit, color: vert), label: 'Rédaction'),
             ],
@@ -105,12 +109,15 @@ class _AccueilState extends State<Accueil> {
           if (une != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-              child: CarteUne(article: une, onTap: () => _ouvrir(une!)),
+              child: ApparitionDouce(enfant: CarteUne(article: une, onTap: () => _ouvrir(une!))),
             ),
-          for (final a in reste)
+          for (final e in reste.asMap().entries)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: LigneArticle(article: a, onTap: () => _ouvrir(a)),
+              child: ApparitionDouce(
+                indice: e.key,
+                enfant: LigneArticle(article: e.value, onTap: () => _ouvrir(e.value)),
+              ),
             ),
         ],
       );

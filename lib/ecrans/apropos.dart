@@ -22,6 +22,7 @@ const _signatureParDefaut = 'La rédaction de LFA News';
 
 final _config = FirebaseFirestore.instance.collection('config').doc('accueil');
 final _equipe = FirebaseFirestore.instance.collection('equipe');
+final _personnel = FirebaseFirestore.instance.collection('personnel');
 
 class Bienvenue {
   const Bienvenue(this.message, this.signature);
@@ -111,8 +112,21 @@ class _CarteBienvenueState extends State<CarteBienvenue> {
   }
 }
 
-class PageAPropos extends StatelessWidget {
+class PageAPropos extends StatefulWidget {
   const PageAPropos({super.key});
+
+  @override
+  State<PageAPropos> createState() => _PageAProposState();
+}
+
+class _PageAProposState extends State<PageAPropos> with SingleTickerProviderStateMixin {
+  late final _onglets = TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _onglets.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,18 +135,43 @@ class PageAPropos extends StatelessWidget {
       builder: (context, ed, _) {
         final admin = ed?.estAdmin ?? false;
         return Scaffold(
-          appBar: AppBar(title: Text('À propos', style: titre(22))),
+          appBar: AppBar(
+            title: Text('À propos', style: titre(22)),
+            bottom: TabBar(
+              controller: _onglets,
+              labelColor: vert,
+              unselectedLabelColor: gris,
+              indicatorColor: vert,
+              tabs: const [Tab(text: 'La rédaction'), Tab(text: 'Établissement')],
+            ),
+          ),
           floatingActionButton: admin
-              ? FloatingActionButton.extended(
-                  onPressed: () => Navigator.of(context)
-                      .push(MaterialPageRoute(builder: (_) => const EditerMembre())),
-                  backgroundColor: vert,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.person_add_alt),
-                  label: const Text('Ajouter un membre'),
+              ? AnimatedBuilder(
+                  animation: _onglets,
+                  builder: (context, _) => FloatingActionButton.extended(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => _onglets.index == 0 ? const EditerMembre() : const EditerPersonnel())),
+                    backgroundColor: vert,
+                    foregroundColor: Colors.white,
+                    icon: const Icon(Icons.person_add_alt),
+                    label: Text(_onglets.index == 0 ? 'Ajouter un membre' : 'Ajouter une fiche'),
+                  ),
                 )
               : null,
-          body: ListView(
+          body: TabBarView(
+            controller: _onglets,
+            children: [
+              _ongletRedaction(admin),
+              _ongletEtablissement(admin),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _ongletRedaction(bool admin) {
+    return ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
             children: [
               const Center(child: LogoLfa(taille: 96)),
@@ -232,7 +271,58 @@ class PageAPropos extends StatelessWidget {
                 },
               ),
             ],
-          ),
+          );
+  }
+
+  Widget _ongletEtablissement(bool admin) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _personnel.orderBy('ordre').snapshots(),
+      builder: (context, s) {
+        if (!s.hasData) return const Center(child: CircularProgressIndicator());
+        final gens = s.data!.docs.map(PersonnelLfa.fromDoc).toList();
+        if (gens.isEmpty) {
+          return messageVide("La présentation de l'équipe administrative et pédagogique arrive bientôt.");
+        }
+        final categories = <String, List<PersonnelLfa>>{};
+        for (final p in gens) {
+          categories.putIfAbsent(p.categorie.isEmpty ? 'Autres' : p.categorie, () => []).add(p);
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+          children: [
+            for (final e in categories.entries) ...[
+              Text(e.key, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: vert)),
+              const SizedBox(height: 8),
+              for (final p in e.value)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Row(
+                    children: [
+                      ClipOval(
+                        child: SizedBox(width: 56, height: 56, child: Photo(octets: p.octets, icone: Icons.person_outline)),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(p.nom, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                            Text(p.role, style: const TextStyle(fontSize: 13, color: gris)),
+                          ],
+                        ),
+                      ),
+                      if (admin)
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20, color: gris),
+                          onPressed: () => Navigator.of(context)
+                              .push(MaterialPageRoute(builder: (_) => EditerPersonnel(personne: p))),
+                        ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 18),
+            ],
+          ],
         );
       },
     );
@@ -393,6 +483,132 @@ class _EditerMembreState extends State<EditerMembre> {
           ),
           const SizedBox(height: 12),
           TextField(controller: _classe, decoration: const InputDecoration(labelText: 'Classe (facultatif)')),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _enregistrer, child: const Text('Enregistrer')),
+        ],
+      ),
+    );
+  }
+}
+
+class EditerPersonnel extends StatefulWidget {
+  const EditerPersonnel({super.key, this.personne});
+  final PersonnelLfa? personne;
+
+  @override
+  State<EditerPersonnel> createState() => _EditerPersonnelState();
+}
+
+class _EditerPersonnelState extends State<EditerPersonnel> {
+  static const _categories = ['Direction', 'Administration', 'Professeurs', 'Autres'];
+
+  late final _nom = TextEditingController(text: widget.personne?.nom ?? '');
+  late final _role = TextEditingController(text: widget.personne?.role ?? '');
+  late String _categorie =
+      _categories.contains(widget.personne?.categorie) ? widget.personne!.categorie : _categories.first;
+  late String _photo = widget.personne?.photo ?? '';
+  late Uint8List? _apercu = widget.personne?.octets;
+
+  Future<void> _choisir(ImageSource source) async {
+    final b = await choisirPhoto(source);
+    if (b == null) return;
+    final petite = await compute(reduire, (b, 320));
+    setState(() {
+      _photo = petite;
+      _apercu = b;
+    });
+  }
+
+  void _enregistrer() {
+    if (_nom.text.trim().isEmpty || _role.text.trim().isEmpty) {
+      afficher('Indiquez au moins le nom et la fonction.');
+      return;
+    }
+    final data = {
+      'nom': _nom.text.trim(),
+      'role': _role.text.trim(),
+      'categorie': _categorie,
+      'photo': _photo,
+    };
+    final m = widget.personne;
+    if (m == null) {
+      unawaited(_personnel
+          .add({...data, 'ordre': DateTime.now().millisecondsSinceEpoch})
+          .then((_) {})
+          .catchError((e) => afficher('Échec : $e')));
+    } else {
+      unawaited(_personnel.doc(m.id).update(data).catchError((e) => afficher('Échec : $e')));
+    }
+    afficher('Fiche enregistrée.');
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _retirer() async {
+    final m = widget.personne;
+    if (m == null) return;
+    final oui = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Retirer ${m.nom} ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Retirer')),
+        ],
+      ),
+    );
+    if (oui != true) return;
+    unawaited(_personnel.doc(m.id).delete().catchError((e) => afficher('Échec : $e')));
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.personne == null ? 'Nouvelle fiche' : 'Modifier la fiche'),
+        actions: [
+          if (widget.personne != null)
+            IconButton(icon: const Icon(Icons.delete_outline), onPressed: _retirer),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Center(
+            child: ClipOval(
+              child: SizedBox(width: 110, height: 110, child: Photo(octets: _apercu, icone: Icons.person_outline)),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () => _choisir(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Galerie'),
+              ),
+              TextButton.icon(
+                onPressed: () => _choisir(ImageSource.camera),
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: const Text('Appareil'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _categorie,
+            decoration: const InputDecoration(labelText: 'Catégorie'),
+            items: [for (final c in _categories) DropdownMenuItem(value: c, child: Text(c))],
+            onChanged: (v) => setState(() => _categorie = v ?? _categorie),
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: _nom, decoration: const InputDecoration(labelText: 'Prénom et nom')),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _role,
+            decoration: const InputDecoration(labelText: 'Fonction', hintText: 'Proviseur, surveillant général…'),
+          ),
           const SizedBox(height: 20),
           FilledButton(onPressed: _enregistrer, child: const Text('Enregistrer')),
         ],

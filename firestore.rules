@@ -67,6 +67,15 @@ service cloud.firestore {
     }
 
     // « J'aime » : visibles par tous.
+    // Nombre de téléphones ayant installé l'application.
+    match /compteurs/{id} {
+      allow read: if estAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['installations'])
+        && request.resource.data.installations == 1;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['installations'])
+        && request.resource.data.installations - resource.data.get('installations', 0) == 1;
+    }
+
     match /reactions/{id} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasOnly(['jaime'])
@@ -88,13 +97,16 @@ service cloud.firestore {
       allow create, delete: if estAdmin();
       allow update: if estAdmin()
         || (estEditeur() && resource.data.enCours == true
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB']));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB']))
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vues'])
+            && request.resource.data.vues - resource.data.get('vues', 0) == 1);
       match /messages/{m} {
         allow read: if true;
         allow create: if estEditeur()
           && request.resource.data.auteurId == request.auth.uid
           && get(/databases/$(database)/documents/directs/$(id)).data.enCours == true;
-        allow update: if estAdmin();
+        allow update: if estAdmin()
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
         allow delete: if estAdmin()
           || (estEditeur() && resource.data.auteurId == request.auth.uid);
       }
@@ -104,6 +116,24 @@ service cloud.firestore {
     match /equipe/{m} {
       allow read: if true;
       allow write: if estAdmin();
+    }
+
+    // Personnel administratif et pédagogique du lycée.
+    match /personnel/{m} {
+      allow read: if true;
+      allow write: if estAdmin();
+    }
+
+    // Cours par niveau et matière, écrits par l'administrateur et les professeurs.
+    function peutCours() {
+      return estEditeur()
+        && get(/databases/$(database)/documents/editeurs/$(request.auth.uid)).data.role in ['admin', 'professeur'];
+    }
+    match /cours/{id} {
+      allow read: if true;
+      allow create: if peutCours() && request.resource.data.auteurId == request.auth.uid;
+      allow update, delete: if estAdmin()
+        || (peutCours() && resource.data.auteurId == request.auth.uid);
     }
 
     // Le message de bienvenue est public ; le reste de la configuration est réservé.

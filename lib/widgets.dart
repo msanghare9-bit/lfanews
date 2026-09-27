@@ -75,10 +75,14 @@ class CarteUne extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), boxShadow: const [
+        BoxShadow(color: Color(0x33132619), blurRadius: 18, offset: Offset(0, 8)),
+      ]),
+      child: ClipRRect(
+      borderRadius: BorderRadius.circular(16),
       child: SizedBox(
-        height: 260,
+        height: 262,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -88,8 +92,15 @@ class CarteUne extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: Container(
-                color: voile,
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Color(0xEB061A0F), Color(0x73061A0F), Color(0x00061A0F)],
+                    stops: [0.0, 0.55, 1.0],
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(18, 34, 18, 18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -109,6 +120,7 @@ class CarteUne extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -130,16 +142,21 @@ class LigneArticle extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 104,
-                height: 80,
-                child: Photo(
-                  octets: article.octets,
-                  icone: article.estPortrait || article.estInterview
-                      ? Icons.person_outline
-                      : Icons.image_outlined,
+            DecoratedBox(
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), boxShadow: const [
+                BoxShadow(color: Color(0x1A132619), blurRadius: 8, offset: Offset(0, 3)),
+              ]),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 104,
+                  height: 80,
+                  child: Photo(
+                    octets: article.octets,
+                    icone: article.estPortrait || article.estInterview
+                        ? Icons.person_outline
+                        : Icons.image_outlined,
+                  ),
                 ),
               ),
             ),
@@ -167,17 +184,45 @@ class LigneArticle extends StatelessWidget {
   }
 }
 
-class BandeauUrgent extends StatelessWidget {
+class BandeauUrgent extends StatefulWidget {
   const BandeauUrgent({super.key, required this.article, required this.onTap});
   final Article article;
   final VoidCallback onTap;
+
+  @override
+  State<BandeauUrgent> createState() => _BandeauUrgentState();
+}
+
+class _BandeauUrgentState extends State<BandeauUrgent> {
+  final _defilement = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Ne défile qu'une fois, lentement, et seulement si le message est trop long.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !_defilement.hasClients) return;
+      final total = _defilement.position.maxScrollExtent;
+      if (total <= 0) return;
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      await _defilement.animateTo(total,
+          duration: Duration(milliseconds: (total * 40).clamp(1800, 9000).round()), curve: Curves.linear);
+    });
+  }
+
+  @override
+  void dispose() {
+    _defilement.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: orangeUrgent,
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(
@@ -190,10 +235,15 @@ class BandeauUrgent extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(article.titre,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                child: SingleChildScrollView(
+                  controller: _defilement,
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Text(widget.article.titre,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                ),
               ),
             ],
           ),
@@ -223,12 +273,75 @@ class Paragraphes extends StatelessWidget {
   }
 }
 
-Widget messageVide(String texte) => Padding(
-      padding: const EdgeInsets.all(32),
-      child: Text(texte, textAlign: TextAlign.center, style: const TextStyle(color: gris, fontSize: 15)),
+Widget messageVide(String texte, {IconData icone = Icons.auto_stories_outlined}) => Padding(
+      padding: const EdgeInsets.all(36),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icone, size: 46, color: vertClair),
+          const SizedBox(height: 14),
+          Text(texte, textAlign: TextAlign.center, style: const TextStyle(color: gris, fontSize: 15, height: 1.4)),
+        ],
+      ),
     );
 
+/// Fait apparaître son enfant en douceur, léger décalage vers le haut,
+/// avec un délai croissant pour un effet en cascade dans une liste.
+class ApparitionDouce extends StatelessWidget {
+  const ApparitionDouce({super.key, required this.enfant, this.indice = 0});
+  final Widget enfant;
+  final int indice;
+
+  @override
+  Widget build(BuildContext context) {
+    final delai = (indice * 60).clamp(0, 300);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 380 + delai),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(offset: Offset(0, (1 - v) * 12), child: child),
+      ),
+      child: enfant,
+    );
+  }
+}
+
 const rougeDirect = Color(0xFFC62828);
+
+/// Petit point rouge qui clignote doucement, pour signaler un direct.
+class PointClignotant extends StatefulWidget {
+  const PointClignotant({super.key, this.couleur = rougeDirect, this.taille = 8});
+  final Color couleur;
+  final double taille;
+
+  @override
+  State<PointClignotant> createState() => _PointClignotantState();
+}
+
+class _PointClignotantState extends State<PointClignotant> with SingleTickerProviderStateMixin {
+  late final _controleur = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controleur.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween(begin: 1.0, end: 0.25).animate(CurvedAnimation(parent: _controleur, curve: Curves.easeInOut)),
+      child: Container(
+        width: widget.taille,
+        height: widget.taille,
+        decoration: BoxDecoration(color: widget.couleur, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
 
 class BandeauDirect extends StatelessWidget {
   const BandeauDirect({super.key, required this.direct, required this.onTap});
@@ -237,9 +350,14 @@ class BandeauDirect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: rougeDirect,
-      child: InkWell(
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(colors: [vert, Color(0xFF187A47)]),
+        boxShadow: [BoxShadow(color: Color(0x400F6B3A), blurRadius: 10, offset: Offset(0, 3))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
@@ -251,10 +369,10 @@ class BandeauDirect extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.circle, size: 8, color: rougeDirect),
-                    SizedBox(width: 4),
+                    PointClignotant(taille: 8),
+                    SizedBox(width: 5),
                     Text('EN DIRECT',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: rougeDirect)),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: vert)),
                   ],
                 ),
               ),
@@ -271,6 +389,7 @@ class BandeauDirect extends StatelessWidget {
               ],
             ],
           ),
+        ),
         ),
       ),
     );

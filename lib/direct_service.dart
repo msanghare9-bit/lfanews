@@ -5,7 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
+import 'dart:convert';
+
 import 'images.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'modeles.dart';
 import 'notifs.dart';
 import 'session.dart';
@@ -51,6 +55,43 @@ Future<void> publierMessage(Editeur ed, String directId, String texte, Uint8List
 
 void changerScore(String directId, String champ, int delta) {
   unawaited(directs.doc(directId).update({champ: FieldValue.increment(delta)}).catchError((_) {}));
+}
+
+/// Une seule fois par téléphone : le nombre total de personnes ayant suivi ce direct.
+Future<void> compterVueDirect(String directId) async {
+  if (FirebaseAuth.instance.currentUser != null) return;
+  try {
+    final p = await SharedPreferences.getInstance();
+    final vus = p.getStringList('directs_vus') ?? <String>[];
+    if (vus.contains(directId)) return;
+    vus.add(directId);
+    await p.setStringList('directs_vus', vus);
+    unawaited(directs.doc(directId).update({'vues': FieldValue.increment(1)}).catchError((_) {}));
+  } catch (_) {}
+}
+
+/// Réactions rapides (émojis) sur une mise à jour du direct : un seul choix par téléphone,
+/// modifiable. Comptées dans le champ `reactions` du message.
+Future<String?> maReactionMessage(String messageId) async {
+  final p = await SharedPreferences.getInstance();
+  return p.getString('reaction_msg_$messageId');
+}
+
+Future<void> reagirMessage(String directId, String messageId, String? avant, String? apres) async {
+  if (avant == apres) return;
+  try {
+    final p = await SharedPreferences.getInstance();
+    if (apres == null) {
+      await p.remove('reaction_msg_$messageId');
+    } else {
+      await p.setString('reaction_msg_$messageId', apres);
+    }
+  } catch (_) {}
+  final ref = directs.doc(directId).collection('messages').doc(messageId);
+  final maj = <String, dynamic>{};
+  if (avant != null) maj['reactions.$avant'] = FieldValue.increment(-1);
+  if (apres != null) maj['reactions.$apres'] = FieldValue.increment(1);
+  if (maj.isNotEmpty) unawaited(ref.update(maj).catchError((_) {}));
 }
 
 void supprimerMessage(String directId, String messageId) {

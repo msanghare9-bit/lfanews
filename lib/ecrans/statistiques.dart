@@ -23,6 +23,7 @@ class Statistiques extends StatefulWidget {
 
 class _StatistiquesState extends State<Statistiques> {
   late Future<List<_Ligne>> _donnees = _charger();
+  late Future<int> _installations = nombreInstallations();
 
   Future<List<_Ligne>> _charger() async {
     final arts = await FirebaseFirestore.instance
@@ -40,7 +41,10 @@ class _StatistiquesState extends State<Statistiques> {
   }
 
   Future<void> _actualiser() async {
-    setState(() => _donnees = _charger());
+    setState(() {
+      _donnees = _charger();
+      _installations = nombreInstallations();
+    });
     await _donnees;
   }
 
@@ -72,6 +76,26 @@ class _StatistiquesState extends State<Statistiques> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
               children: [
+                FutureBuilder<int>(
+                  future: _installations,
+                  builder: (context, si) => Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      decoration: BoxDecoration(color: vert, borderRadius: BorderRadius.circular(12)),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.phone_iphone, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('${si.data ?? '…'} téléphones ont installé LFA News',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 Row(
                   children: [
                     _chiffre('Vues', vues),

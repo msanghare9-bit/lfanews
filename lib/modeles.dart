@@ -8,8 +8,7 @@ const categories = [
   'Vie scolaire',
   'Examens',
   'Clubs',
-  'Sport',
-  'Culture',
+  'Sport et Culture',
   'Interview',
   'Portrait',
 ];
@@ -111,6 +110,7 @@ class Direct {
     required this.scoreB,
     required this.enCours,
     required this.debut,
+    this.vues = 0,
   });
 
   final String id;
@@ -121,6 +121,7 @@ class Direct {
   final int scoreB;
   final bool enCours;
   final DateTime debut;
+  final int vues;
 
   bool get estMatch => equipeA.isNotEmpty && equipeB.isNotEmpty;
   String get score => '$scoreA – $scoreB';
@@ -137,23 +138,26 @@ class Direct {
       scoreB: n('scoreB'),
       enCours: d['enCours'] == true,
       debut: (d['debut'] is Timestamp) ? (d['debut'] as Timestamp).toDate() : DateTime.now(),
+      vues: n('vues'),
     );
   }
 }
 
 class MessageDirect {
-  MessageDirect(this.id, this.texte, this.photo, this.date, this.auteurId, this.auteurNom);
+  MessageDirect(this.id, this.texte, this.photo, this.date, this.auteurId, this.auteurNom, [this.reactions = const {}]);
   final String id;
   final String texte;
   final String photo;
   final DateTime date;
   final String auteurId;
   final String auteurNom;
+  final Map<String, int> reactions;
 
   late final Uint8List? octets = photo.isEmpty ? null : base64Decode(photo);
 
   factory MessageDirect.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
+    final brut = d['reactions'];
     return MessageDirect(
       doc.id,
       (d['texte'] ?? '').toString(),
@@ -161,6 +165,7 @@ class MessageDirect {
       (d['date'] is Timestamp) ? (d['date'] as Timestamp).toDate() : DateTime.now(),
       (d['auteurId'] ?? '').toString(),
       (d['auteurNom'] ?? '').toString(),
+      brut is Map ? brut.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0)) : const {},
     );
   }
 }
@@ -179,5 +184,69 @@ class Membre {
     final d = doc.data() ?? {};
     String s(String k) => (d[k] ?? '').toString();
     return Membre(doc.id, s('nom'), s('role'), s('classe'), s('photo'));
+  }
+}
+
+const niveaux = ['6e', '5e', '4e', '3e', '2nde', '1ère', 'Terminale'];
+const matieres = [
+  'Mathématiques',
+  'Français',
+  'Anglais',
+  'Arabe',
+  'Histoire-Géographie',
+  'SVT',
+  'Éducation religieuse',
+  'Philosophie',
+  'Physique-Chimie',
+];
+
+class Cours {
+  Cours({
+    required this.id,
+    required this.niveau,
+    required this.matiere,
+    required this.titre,
+    required this.texte,
+    required this.auteurNom,
+    required this.date,
+  });
+
+  final String id;
+  final String niveau;
+  final String matiere;
+  final String titre;
+  final String texte;
+  final String auteurNom;
+  final DateTime date;
+
+  factory Cours.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? {};
+    String s(String k) => (d[k] ?? '').toString();
+    return Cours(
+      id: doc.id,
+      niveau: s('niveau'),
+      matiere: s('matiere'),
+      titre: s('titre'),
+      texte: s('texte'),
+      auteurNom: s('auteurNom'),
+      date: (d['date'] is Timestamp) ? (d['date'] as Timestamp).toDate() : DateTime.now(),
+    );
+  }
+}
+
+class PersonnelLfa {
+  PersonnelLfa(this.id, this.nom, this.role, this.categorie, this.photo);
+  final String id;
+  final String nom;
+  final String role;
+  final String categorie;
+  final String photo;
+
+  late final Uint8List? octets = photo.isEmpty ? null : base64Decode(photo);
+
+  factory PersonnelLfa.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? {};
+    String s(String k) => (d[k] ?? '').toString();
+    return PersonnelLfa(doc.id, s('nom'), s('role'), s('categorie'), s('photo'));
   }
 }

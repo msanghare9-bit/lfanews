@@ -14,10 +14,24 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'article.dart';
 
-class PageDirect extends StatelessWidget {
+class PageDirect extends StatefulWidget {
   const PageDirect({super.key, required this.directId, this.articleId});
   final String directId;
   final String? articleId;
+
+  @override
+  State<PageDirect> createState() => _PageDirectState();
+}
+
+class _PageDirectState extends State<PageDirect> {
+  String get directId => widget.directId;
+  String? get articleId => widget.articleId;
+
+  @override
+  void initState() {
+    super.initState();
+    compterVueDirect(directId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +61,7 @@ class PageDirect extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
-                          color: d.enCours ? rougeDirect : encre)),
+                          color: d.enCours ? vert : encre)),
                 ],
               ),
               actions: [
@@ -63,8 +77,19 @@ class PageDirect extends StatelessWidget {
                   child: Text(d.titre, style: titre(26)),
                 ),
                 if (d.estMatch) _Score(direct: d, modifiable: equipe),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.visibility_outlined, size: 16, color: gris),
+                      const SizedBox(width: 5),
+                      Text('${d.vues} personne${d.vues > 1 ? 's ont' : ' a'} suivi ce direct',
+                          style: const TextStyle(fontSize: 13, color: gris)),
+                    ],
+                  ),
+                ),
                 if (equipe) _Composer(editeur: ed, directId: d.id),
-                _Fil(directId: d.id, editeur: ed),
+                _Fil(directId: d.id, editeur: ed, match: d.estMatch),
                 if (articleId != null) Reactions(id: articleId!, equipe: ed != null),
               ],
             ),
@@ -263,9 +288,10 @@ class _ComposerState extends State<_Composer> {
 }
 
 class _Fil extends StatelessWidget {
-  const _Fil({required this.directId, required this.editeur});
+  const _Fil({required this.directId, required this.editeur, required this.match});
   final String directId;
   final Editeur? editeur;
+  final bool match;
 
   @override
   Widget build(BuildContext context) {
@@ -307,6 +333,8 @@ class _Fil extends StatelessWidget {
                                 child: Image.memory(m.octets!, fit: BoxFit.cover, width: double.infinity),
                               ),
                             ],
+                            const SizedBox(height: 8),
+                            _ReactionsMessage(directId: directId, message: m, match: match),
                             const SizedBox(height: 4),
                             Text(m.auteurNom, style: const TextStyle(fontSize: 12, color: gris)),
                           ],
@@ -403,6 +431,71 @@ class _LancerDirectState extends State<LancerDirect> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ReactionsMessage extends StatefulWidget {
+  const _ReactionsMessage({required this.directId, required this.message, required this.match});
+  final String directId;
+  final MessageDirect message;
+  final bool match;
+
+  @override
+  State<_ReactionsMessage> createState() => _ReactionsMessageState();
+}
+
+class _ReactionsMessageState extends State<_ReactionsMessage> {
+  String? _choix;
+
+  static const _emojisMatch = ['👏', '🔥', '😂', '❤️'];
+  static const _emojisEvenement = ['👏', '❤️', '🎉', '🙏'];
+
+  @override
+  void initState() {
+    super.initState();
+    maReactionMessage(widget.message.id).then((v) {
+      if (mounted) setState(() => _choix = v);
+    });
+  }
+
+  void _toucher(String e) {
+    final apres = _choix == e ? null : e;
+    reagirMessage(widget.directId, widget.message.id, _choix, apres);
+    setState(() => _choix = apres);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final emojis = widget.match ? _emojisMatch : _emojisEvenement;
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final e in emojis)
+          InkWell(
+            onTap: () => _toucher(e),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: _choix == e ? vertPale : Colors.transparent,
+                border: Border.all(color: _choix == e ? vert : bordureChamp),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(e, style: const TextStyle(fontSize: 14)),
+                  if ((widget.message.reactions[e] ?? 0) > 0) ...[
+                    const SizedBox(width: 4),
+                    Text('${widget.message.reactions[e]}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: vert)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -193,7 +193,8 @@ class Membre {
 }
 
 const niveaux = ['6e', '5e', '4e', '3e', '2nde', '1ère', 'Terminale'];
-const matieres = [
+
+const _matieresBase = [
   'Mathématiques',
   'Français',
   'Anglais',
@@ -201,9 +202,35 @@ const matieres = [
   'Histoire-Géographie',
   'SVT',
   'Éducation religieuse',
-  'Philosophie',
-  'Physique-Chimie',
 ];
+
+/// Niveaux à partir desquels on distingue une série.
+const _niveauxAvecSerie = ['2nde', '1ère', 'Terminale'];
+const series = ['L', 'S'];
+
+/// Matières dont le contenu diffère selon la série ; les autres matières
+/// sont communes aux deux séries, à partir de la Seconde.
+const matieresDifferentesSelonSerie = {'Mathématiques', 'Physique-Chimie', 'SVT', 'Philosophie'};
+
+/// Les matières proposées dépendent du niveau : la Philosophie n'existe
+/// qu'en Terminale, et la Physique-Chimie n'est pas enseignée en 6e et 5e.
+List<String> matieresPour(String niveau) {
+  final liste = [..._matieresBase];
+  if (niveau != '6e' && niveau != '5e') liste.add('Physique-Chimie');
+  if (niveau == 'Terminale') liste.add('Philosophie');
+  return liste;
+}
+
+/// Vrai si, pour ce niveau et cette matière, il faut choisir une série
+/// avant de voir les cours (leur contenu diffère entre L et S).
+bool matiereADeuxSeries(String niveau, String matiere) =>
+    _niveauxAvecSerie.contains(niveau) && matieresDifferentesSelonSerie.contains(matiere);
+
+/// Toutes les matières existant quelque part, pour les écrans qui n'ont pas
+/// encore de niveau choisi (recherche, statistiques).
+final matieres = {
+  for (final n in niveaux) ...matieresPour(n),
+}.toList();
 
 class Cours {
   Cours({
@@ -215,6 +242,9 @@ class Cours {
     required this.auteurNom,
     required this.date,
     this.exercices = const [],
+    this.serie = '',
+    this.pdfNom = '',
+    this.nbMorceauxPdf = 0,
   });
 
   final String id;
@@ -225,6 +255,10 @@ class Cours {
   final String auteurNom;
   final DateTime date;
   final List<QR> exercices; // q = énoncé, r = corrigé
+  final String serie; // 'L', 'S', ou vide si la matière est commune
+  final String pdfNom;
+  final int nbMorceauxPdf;
+  bool get aUnPdf => nbMorceauxPdf > 0;
 
   factory Cours.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
@@ -243,6 +277,9 @@ class Cours {
               .map((e) => QR((e['q'] ?? '').toString(), (e['r'] ?? '').toString()))
               .toList()
           : <QR>[],
+      serie: s('serie'),
+      pdfNom: s('pdfNom'),
+      nbMorceauxPdf: (d['nbMorceauxPdf'] as num?)?.toInt() ?? 0,
     );
   }
 }

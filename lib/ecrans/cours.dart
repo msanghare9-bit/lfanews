@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../app.dart';
+import '../cours_service.dart';
 import '../modeles.dart';
 import '../session.dart';
 import '../theme.dart';
@@ -19,6 +23,9 @@ class Cours0 extends StatefulWidget {
 class _Cours0State extends State<Cours0> {
   String? _niveau;
   String? _matiere;
+  String? _serie;
+
+  bool get _attendSerie => _niveau != null && _matiere != null && matiereADeuxSeries(_niveau!, _matiere!);
 
   @override
   Widget build(BuildContext context) {
@@ -28,12 +35,15 @@ class _Cours0State extends State<Cours0> {
         Widget corps;
         String titreEcran = 'Cours';
         if (_niveau == null) {
-          corps = _listeNiveaux();
+          corps = _listeNiveaux(ed);
         } else if (_matiere == null) {
           titreEcran = _niveau!;
-          corps = _listeMatieres();
-        } else {
+          corps = _listeMatieres(ed);
+        } else if (_attendSerie && _serie == null) {
           titreEcran = '$_matiere · $_niveau';
+          corps = _listeSeries();
+        } else {
+          titreEcran = _serie == null ? '$_matiere · $_niveau' : '$_matiere · $_niveau $_serie';
           corps = _listeCours();
         }
         return Scaffold(
@@ -41,7 +51,9 @@ class _Cours0State extends State<Cours0> {
             leading: (_niveau == null)
                 ? null
                 : BackButton(onPressed: () => setState(() {
-                    if (_matiere != null) {
+                    if (_serie != null) {
+                      _serie = null;
+                    } else if (_matiere != null) {
                       _matiere = null;
                     } else {
                       _niveau = null;
@@ -49,10 +61,14 @@ class _Cours0State extends State<Cours0> {
                   })),
             title: Text(titreEcran, style: titre(20)),
           ),
-          floatingActionButton: (ed?.peutCours ?? false) && _niveau != null && _matiere != null
+          floatingActionButton: (ed?.peutCours ?? false) &&
+                  _niveau != null &&
+                  _matiere != null &&
+                  (!_attendSerie || _serie != null)
               ? FloatingActionButton.extended(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => EditerCours(editeur: ed!, niveau: _niveau!, matiere: _matiere!))),
+                      builder: (_) => EditerCours(
+                          editeur: ed!, niveau: _niveau!, matiere: _matiere!, serie: _serie ?? ''))),
                   backgroundColor: vert,
                   foregroundColor: Colors.white,
                   icon: const Icon(Icons.add),
@@ -65,33 +81,58 @@ class _Cours0State extends State<Cours0> {
     );
   }
 
-  Widget _listeNiveaux() {
+  Widget _listeNiveaux(Editeur? ed) {
+    // Un professeur limité à certains niveaux ne voit que ceux-là,
+    // et seulement dans cette page (l'accueil de LFA News reste ouvert à tous en lecture).
+    final restreint = ed != null && ed.role == 'professeur' && ed.niveaux.isNotEmpty;
+    final liste = restreint ? niveaux.where((n) => ed.niveaux.contains(n)).toList() : niveaux;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
         const Text('Choisissez votre niveau', style: TextStyle(fontSize: 15, color: gris)),
         const SizedBox(height: 12),
-        for (final n in niveaux)
+        for (final n in liste)
           _carte(n, Icons.school_outlined, () => setState(() => _niveau = n)),
       ],
     );
   }
 
-  Widget _listeMatieres() {
+  Widget _listeMatieres(Editeur? ed) {
+    var liste = matieresPour(_niveau!);
+    final restreint = ed != null && ed.role == 'professeur' && ed.matieres.isNotEmpty;
+    if (restreint) liste = liste.where((m) => ed.matieres.contains(m)).toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        for (final m in matieres)
-          _carte(m, _iconeMatiere(m), () => setState(() => _matiere = m)),
+        for (final m in liste)
+          _carte(m, _iconeMatiere(m), () => setState(() {
+            _matiere = m;
+            _serie = null;
+          })),
+      ],
+    );
+  }
+
+  Widget _listeSeries() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      children: [
+        const Text('Le contenu de cette matière diffère selon la série',
+            style: TextStyle(fontSize: 15, color: gris)),
+        const SizedBox(height: 12),
+        for (final se in series)
+          _carte('Série $se', Icons.workspace_premium_outlined, () => setState(() => _serie = se)),
       ],
     );
   }
 
   Widget _listeCours() {
+    final serieRecherchee = _attendSerie ? _serie : '';
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _cours
           .where('niveau', isEqualTo: _niveau)
           .where('matiere', isEqualTo: _matiere)
+          .where('serie', isEqualTo: serieRecherchee)
           .snapshots(),
       builder: (context, s) {
         if (!s.hasData) return const Center(child: CircularProgressIndicator());
@@ -185,21 +226,53 @@ class LectureCours extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => EditerCours(editeur: ed!, niveau: cours.niveau, matiere: cours.matiere, existant: cours))),
+                      builder: (_) => EditerCours(
+                          editeur: ed!, niveau: cours.niveau, matiere: cours.matiere, serie: cours.serie, existant: cours))),
                 ),
             ],
           ),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 30),
             children: [
-              Text('${cours.matiere} · ${cours.niveau}',
+              Text(cours.serie.isEmpty
+                      ? '${cours.matiere} · ${cours.niveau}'
+                      : '${cours.matiere} · ${cours.niveau} série ${cours.serie}',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: vert)),
               const SizedBox(height: 8),
               Text(cours.titre, style: titre(26)),
               const SizedBox(height: 6),
               Text('${cours.auteurNom} · ${dateFr(cours.date)}', style: const TextStyle(fontSize: 13, color: gris)),
               const Divider(height: 28, color: bordure),
-              Paragraphes(cours.texte),
+              if (cours.aUnPdf) ...[
+                InkWell(
+                  onTap: () => Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => VisionneusePdf(cours: cours))),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: vertPale, borderRadius: BorderRadius.circular(12)),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.picture_as_pdf_outlined, color: vert, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Document du cours', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                              Text(cours.pdfNom.isEmpty ? 'Ouvrir le PDF' : cours.pdfNom,
+                                  style: const TextStyle(fontSize: 12, color: gris)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: gris),
+                      ],
+                    ),
+                  ),
+                ),
+                if (cours.texte.trim().isNotEmpty) const SizedBox(height: 18),
+              ],
+              if (cours.texte.trim().isNotEmpty) Paragraphes(cours.texte),
               if (cours.exercices.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Text('Exercices', style: titre(22, couleur: vert)),
@@ -298,11 +371,43 @@ class _PaireEx {
   final TextEditingController r;
 }
 
+class VisionneusePdf extends StatefulWidget {
+  const VisionneusePdf({super.key, required this.cours});
+  final Cours cours;
+
+  @override
+  State<VisionneusePdf> createState() => _VisionneusePdfState();
+}
+
+class _VisionneusePdfState extends State<VisionneusePdf> {
+  late final Future<Uint8List> _pdf = chargerPdf(widget.cours);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.cours.pdfNom.isEmpty ? widget.cours.titre : widget.cours.pdfNom,
+          style: const TextStyle(fontSize: 16))),
+      body: FutureBuilder<Uint8List>(
+        future: _pdf,
+        builder: (context, s) {
+          if (s.hasError) {
+            return messageVide('Impossible d’ouvrir ce document : ${s.error}');
+          }
+          if (!s.hasData) return const Center(child: CircularProgressIndicator());
+          return SfPdfViewer.memory(s.data!);
+        },
+      ),
+    );
+  }
+}
+
 class EditerCours extends StatefulWidget {
-  const EditerCours({super.key, required this.editeur, required this.niveau, required this.matiere, this.existant});
+  const EditerCours(
+      {super.key, required this.editeur, required this.niveau, required this.matiere, this.serie = '', this.existant});
   final Editeur editeur;
   final String niveau;
   final String matiere;
+  final String serie;
   final Cours? existant;
 
   @override
@@ -314,7 +419,34 @@ class _EditerCoursState extends State<EditerCours> {
   late final _texte = TextEditingController(text: widget.existant?.texte ?? '');
   late final List<_PaireEx> _exercices =
       (widget.existant?.exercices ?? []).map((e) => _PaireEx(e.q, e.r)).toList();
+  Uint8List? _nouveauPdf;
+  String _nouveauPdfNom = '';
+  bool _pdfRetire = false;
+  bool _lecturePdf = false;
   bool _envoi = false;
+
+  bool get _aDejaUnPdf => (widget.existant?.aUnPdf ?? false) && !_pdfRetire;
+
+  Future<void> _choisirPdf() async {
+    final f = await openFile(acceptedTypeGroups: const [
+      XTypeGroup(label: 'PDF', extensions: ['pdf'], mimeTypes: ['application/pdf'])
+    ]);
+    if (f == null) return;
+    final taille = await f.length();
+    if (taille > tailleMaxPdfOctets) {
+      afficher('Ce document fait ${(taille / 1048576).toStringAsFixed(1)} Mo. Maximum : 3 Mo.');
+      return;
+    }
+    setState(() => _lecturePdf = true);
+    final octets = await f.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _nouveauPdf = octets;
+      _nouveauPdfNom = f.name;
+      _pdfRetire = false;
+      _lecturePdf = false;
+    });
+  }
 
   List<Map<String, dynamic>> _exercicesEnMap() => _exercices
       .where((p) => p.q.text.trim().isNotEmpty)
@@ -322,16 +454,24 @@ class _EditerCoursState extends State<EditerCours> {
       .toList();
 
   Future<void> _enregistrer() async {
-    if (_titre.text.trim().isEmpty || _texte.text.trim().isEmpty) {
-      afficher('Ajoutez un titre et le texte du cours.');
+    if (_titre.text.trim().isEmpty) {
+      afficher('Ajoutez un titre au cours.');
+      return;
+    }
+    final aTexte = _texte.text.trim().isNotEmpty;
+    final aUnPdfFinal = _nouveauPdf != null || _aDejaUnPdf;
+    if (!aTexte && !aUnPdfFinal) {
+      afficher('Ajoutez un texte, un PDF, ou les deux.');
       return;
     }
     setState(() => _envoi = true);
     try {
+      String id;
       if (widget.existant == null) {
-        await _cours.add({
+        final ref = await _cours.add({
           'niveau': widget.niveau,
           'matiere': widget.matiere,
+          'serie': widget.serie,
           'titre': _titre.text.trim(),
           'texte': _texte.text.trim(),
           'exercices': _exercicesEnMap(),
@@ -339,12 +479,23 @@ class _EditerCoursState extends State<EditerCours> {
           'auteurNom': widget.editeur.nom,
           'date': FieldValue.serverTimestamp(),
         });
+        id = ref.id;
       } else {
-        await _cours.doc(widget.existant!.id).update({
+        id = widget.existant!.id;
+        await _cours.doc(id).update({
           'titre': _titre.text.trim(),
           'texte': _texte.text.trim(),
           'exercices': _exercicesEnMap(),
         });
+      }
+      if (_pdfRetire && widget.existant != null && widget.existant!.aUnPdf) {
+        await retirerPdf(id, widget.existant!.nbMorceauxPdf);
+      }
+      if (_nouveauPdf != null) {
+        if (widget.existant != null && widget.existant!.aUnPdf && !_pdfRetire) {
+          await retirerPdf(id, widget.existant!.nbMorceauxPdf);
+        }
+        await enregistrerPdf(id, _nouveauPdf!, _nouveauPdfNom);
       }
       afficher(widget.existant == null ? 'Cours ajouté.' : 'Cours modifié.');
       if (mounted) Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == null);
@@ -388,7 +539,9 @@ class _EditerCoursState extends State<EditerCours> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('${widget.matiere} · ${widget.niveau}',
+          Text(widget.serie.isEmpty
+                  ? '${widget.matiere} · ${widget.niveau}'
+                  : '${widget.matiere} · ${widget.niveau} série ${widget.serie}',
               style: const TextStyle(fontWeight: FontWeight.w700, color: vert)),
           const SizedBox(height: 14),
           TextField(
@@ -399,11 +552,54 @@ class _EditerCoursState extends State<EditerCours> {
           const SizedBox(height: 12),
           TextField(
             controller: _texte,
-            minLines: 12,
+            minLines: 8,
             maxLines: null,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'Texte du cours', filled: true, fillColor: Colors.white),
+            decoration: const InputDecoration(
+                labelText: 'Texte du cours (facultatif si vous ajoutez un PDF)',
+                filled: true,
+                fillColor: Colors.white),
           ),
+          const SizedBox(height: 18),
+          const Text('Document PDF (facultatif)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 4),
+          const Text('3 Mo au maximum. Vous pouvez ajouter un texte, un PDF, ou les deux.',
+              style: TextStyle(fontSize: 12, color: gris)),
+          const SizedBox(height: 8),
+          if (_nouveauPdf != null || _aDejaUnPdf)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf_outlined, color: vert),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _nouveauPdf != null ? _nouveauPdfNom : widget.existant!.pdfNom,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() {
+                      _nouveauPdf = null;
+                      _nouveauPdfNom = '';
+                      _pdfRetire = true;
+                    }),
+                    child: const Text('Retirer'),
+                  ),
+                ],
+              ),
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: _lecturePdf ? null : _choisirPdf,
+              icon: const Icon(Icons.upload_file_outlined),
+              label: Text(_lecturePdf ? 'Vérification…' : 'Importer un PDF'),
+              style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48), foregroundColor: vert, backgroundColor: Colors.white),
+            ),
           const SizedBox(height: 22),
           const Text('Exercices (facultatif)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 4),

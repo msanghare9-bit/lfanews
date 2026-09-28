@@ -87,7 +87,9 @@ service cloud.firestore {
 
     match /editeurs/{uid} {
       allow read: if connecte() && (request.auth.uid == uid || estAdmin());
-      allow write: if false;
+      allow list: if estAdmin();
+      allow create, update: if estAdmin() && request.resource.data.role != 'admin';
+      allow delete: if estAdmin();
     }
 
     // Fils en direct : lisibles par tous. L'administrateur les lance et les termine,
@@ -141,15 +143,35 @@ service cloud.firestore {
     }
 
     // Cours par niveau et matière, écrits par l'administrateur et les professeurs.
+    function fichePersonnelle() {
+      return get(/databases/$(database)/documents/editeurs/$(request.auth.uid)).data;
+    }
     function peutCours() {
-      return estEditeur()
-        && get(/databases/$(database)/documents/editeurs/$(request.auth.uid)).data.role in ['admin', 'professeur'];
+      return estEditeur() && fichePersonnelle().role in ['admin', 'professeur'];
+    }
+    // Un professeur n'ajoute que dans les niveaux et matières qui lui ont été
+    // assignés (listes vides = aucune restriction, ce qui reste vrai pour l'admin).
+    function niveauMatiereAutorises(d) {
+      let fiche = fichePersonnelle();
+      return fiche.role == 'admin'
+        || ((!('niveaux' in fiche) || fiche.niveaux.size() == 0 || d.niveau in fiche.niveaux)
+            && (!('matieres' in fiche) || fiche.matieres.size() == 0 || d.matiere in fiche.matieres));
     }
     match /cours/{id} {
       allow read: if true;
-      allow create: if peutCours() && request.resource.data.auteurId == request.auth.uid;
-      allow update, delete: if estAdmin()
+      allow create: if peutCours()
+        && request.resource.data.auteurId == request.auth.uid
+        && niveauMatiereAutorises(request.resource.data);
+      allow update: if estAdmin()
+        || (peutCours() && resource.data.auteurId == request.auth.uid && niveauMatiereAutorises(request.resource.data));
+      allow delete: if estAdmin()
         || (peutCours() && resource.data.auteurId == request.auth.uid);
+
+      match /pdf/{p} {
+        allow read: if true;
+        allow write: if estAdmin()
+          || (peutCours() && get(/databases/$(database)/documents/cours/$(id)).data.auteurId == request.auth.uid);
+      }
     }
 
     // Le message de bienvenue est public ; le reste de la configuration est réservé.

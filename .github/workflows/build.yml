@@ -15,6 +15,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -44,11 +46,31 @@ jobs:
 
       - name: Construire l'APK
         working-directory: app_build
+        shell: bash
         env:
           KS_PASS: ${{ secrets.KS_PASS }}
         run: |
-          flutter pub get
-          flutter build apk --release --build-number=${{ github.run_number }}
+          flutter pub get 2>&1 | tee /tmp/build_log.txt
+          flutter build apk --release --build-number=${{ github.run_number }} 2>&1 | tee -a /tmp/build_log.txt
+
+      - name: Conserver le journal en cas d'échec
+        if: failure()
+        run: |
+          {
+            echo "=== Lignes d'erreur ==="
+            grep -nE "Error|error:|Exception|FAILURE|What went wrong" /tmp/build_log.txt | head -80
+            echo
+            echo "=== Fin du journal ==="
+            tail -n 120 /tmp/build_log.txt
+          } > /tmp/resume.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout --orphan journal
+          git rm -rf --quiet . || true
+          cp /tmp/resume.txt build_log.txt
+          git add build_log.txt
+          git commit -q -m "Journal de construction ${{ github.run_number }}"
+          git push -f origin journal
 
       - uses: actions/upload-artifact@v4
         with:

@@ -200,12 +200,102 @@ class LectureCours extends StatelessWidget {
               Text('${cours.auteurNom} · ${dateFr(cours.date)}', style: const TextStyle(fontSize: 13, color: gris)),
               const Divider(height: 28, color: bordure),
               Paragraphes(cours.texte),
+              if (cours.exercices.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text('Exercices', style: titre(22, couleur: vert)),
+                const SizedBox(height: 12),
+                for (var i = 0; i < cours.exercices.length; i++)
+                  _Exercice(numero: i + 1, exercice: cours.exercices[i]),
+              ],
             ],
           ),
         );
       },
     );
   }
+}
+
+class _Exercice extends StatefulWidget {
+  const _Exercice({required this.numero, required this.exercice});
+  final int numero;
+  final QR exercice;
+
+  @override
+  State<_Exercice> createState() => _ExerciceState();
+}
+
+class _ExerciceState extends State<_Exercice> {
+  bool _montre = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final aCorrige = widget.exercice.r.trim().isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: vertPale,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Exercice ${widget.numero}',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: vert)),
+          const SizedBox(height: 6),
+          Text(widget.exercice.q, style: const TextStyle(fontSize: 16, height: 1.5)),
+          if (aCorrige) ...[
+            const SizedBox(height: 12),
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 250),
+              crossFadeState: _montre ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              firstChild: OutlinedButton.icon(
+                onPressed: () => setState(() => _montre = true),
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                label: const Text('Voir le corrigé'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: vert,
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: vert),
+                ),
+              ),
+              secondChild: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: vertVif),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Corrigé', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: vert)),
+                    const SizedBox(height: 4),
+                    Text(widget.exercice.r, style: const TextStyle(fontSize: 15, height: 1.5)),
+                    const SizedBox(height: 6),
+                    TextButton(
+                      onPressed: () => setState(() => _montre = false),
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30)),
+                      child: const Text('Masquer le corrigé'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PaireEx {
+  _PaireEx([String q = '', String r = ''])
+      : q = TextEditingController(text: q),
+        r = TextEditingController(text: r);
+  final TextEditingController q;
+  final TextEditingController r;
 }
 
 class EditerCours extends StatefulWidget {
@@ -222,7 +312,14 @@ class EditerCours extends StatefulWidget {
 class _EditerCoursState extends State<EditerCours> {
   late final _titre = TextEditingController(text: widget.existant?.titre ?? '');
   late final _texte = TextEditingController(text: widget.existant?.texte ?? '');
+  late final List<_PaireEx> _exercices =
+      (widget.existant?.exercices ?? []).map((e) => _PaireEx(e.q, e.r)).toList();
   bool _envoi = false;
+
+  List<Map<String, dynamic>> _exercicesEnMap() => _exercices
+      .where((p) => p.q.text.trim().isNotEmpty)
+      .map((p) => QR(p.q.text.trim(), p.r.text.trim()).toMap())
+      .toList();
 
   Future<void> _enregistrer() async {
     if (_titre.text.trim().isEmpty || _texte.text.trim().isEmpty) {
@@ -237,6 +334,7 @@ class _EditerCoursState extends State<EditerCours> {
           'matiere': widget.matiere,
           'titre': _titre.text.trim(),
           'texte': _texte.text.trim(),
+          'exercices': _exercicesEnMap(),
           'auteurId': widget.editeur.uid,
           'auteurNom': widget.editeur.nom,
           'date': FieldValue.serverTimestamp(),
@@ -245,6 +343,7 @@ class _EditerCoursState extends State<EditerCours> {
         await _cours.doc(widget.existant!.id).update({
           'titre': _titre.text.trim(),
           'texte': _texte.text.trim(),
+          'exercices': _exercicesEnMap(),
         });
       }
       afficher(widget.existant == null ? 'Cours ajouté.' : 'Cours modifié.');
@@ -305,7 +404,53 @@ class _EditerCoursState extends State<EditerCours> {
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(labelText: 'Texte du cours', filled: true, fillColor: Colors.white),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
+          const Text('Exercices (facultatif)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 4),
+          const Text('Le corrigé reste masqué : l’élève l’affiche en appuyant sur un bouton.',
+              style: TextStyle(fontSize: 12, color: gris)),
+          const SizedBox(height: 10),
+          for (var i = 0; i < _exercices.length; i++)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Exercice ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w700, color: vert)),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Retirer cet exercice',
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => setState(() => _exercices.removeAt(i)),
+                      ),
+                    ],
+                  ),
+                  TextField(
+                    controller: _exercices[i].q,
+                    minLines: 2,
+                    maxLines: null,
+                    decoration: const InputDecoration(hintText: 'L’énoncé'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _exercices[i].r,
+                    minLines: 2,
+                    maxLines: null,
+                    decoration: const InputDecoration(hintText: 'Le corrigé (facultatif)'),
+                  ),
+                ],
+              ),
+            ),
+          TextButton.icon(
+            onPressed: () => setState(() => _exercices.add(_PaireEx())),
+            icon: const Icon(Icons.add),
+            label: const Text('Ajouter un exercice'),
+          ),
+          const SizedBox(height: 16),
           FilledButton(
             onPressed: _envoi ? null : _enregistrer,
             child: Text(_envoi ? 'Enregistrement…' : 'Enregistrer'),

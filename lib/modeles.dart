@@ -6,12 +6,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 const categories = [
   'Annonces',
   'Vie scolaire',
-  'Examens',
-  'Clubs',
-  'Sport et Culture',
-  'Interview',
-  'Portrait',
-  'La Communauté',
+  'Sport',
+  'Rencontre',
+  'Actu Kébémer',
+  'Culture générale',
+  'Chronique',
+  'Pour rire',
 ];
 
 class QR {
@@ -40,9 +40,11 @@ class Article {
     required this.citation,
     required this.qr,
     this.directId = '',
+    this.video = '',
   });
 
   final String directId;
+  final String video; // identifiant YouTube (facultatif)
 
   final String id;
   final String collection; // 'articles' ou 'propositions'
@@ -65,6 +67,7 @@ class Article {
 
   bool get estInterview => categorie == 'Interview';
   bool get estPortrait => categorie == 'Portrait';
+  bool get estRencontre => categorie == 'Rencontre';
   bool get estProposition => collection == 'propositions';
 
   DocumentReference<Map<String, dynamic>> get ref =>
@@ -97,6 +100,7 @@ class Article {
               .toList()
           : <QR>[],
       directId: s('directId'),
+      video: s('video'),
     );
   }
 }
@@ -210,6 +214,7 @@ class Cours {
     required this.texte,
     required this.auteurNom,
     required this.date,
+    this.exercices = const [],
   });
 
   final String id;
@@ -219,6 +224,7 @@ class Cours {
   final String texte;
   final String auteurNom;
   final DateTime date;
+  final List<QR> exercices; // q = énoncé, r = corrigé
 
   factory Cours.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
@@ -231,6 +237,12 @@ class Cours {
       texte: s('texte'),
       auteurNom: s('auteurNom'),
       date: (d['date'] is Timestamp) ? (d['date'] as Timestamp).toDate() : DateTime.now(),
+      exercices: d['exercices'] is List
+          ? (d['exercices'] as List)
+              .whereType<Map>()
+              .map((e) => QR((e['q'] ?? '').toString(), (e['r'] ?? '').toString()))
+              .toList()
+          : <QR>[],
     );
   }
 }
@@ -249,5 +261,86 @@ class PersonnelLfa {
     final d = doc.data() ?? {};
     String s(String k) => (d[k] ?? '').toString();
     return PersonnelLfa(doc.id, s('nom'), s('role'), s('categorie'), s('photo'));
+  }
+}
+
+class Emission {
+  Emission({
+    required this.id,
+    required this.titre,
+    required this.debut,
+    required this.duree,
+    required this.nbMorceaux,
+    required this.format,
+    required this.couverture,
+    required this.vues,
+    required this.reactions,
+    required this.auteurNom,
+  });
+
+  final String id;
+  final String titre;
+  final DateTime debut;
+  final int duree; // secondes
+  final int nbMorceaux;
+  final String format;
+  final String couverture;
+  final int vues;
+  final Map<String, int> reactions;
+  final String auteurNom;
+
+  DateTime get fin => debut.add(Duration(seconds: duree));
+  late final Uint8List? octetsCouverture = couverture.isEmpty ? null : base64Decode(couverture);
+
+  factory Emission.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? {};
+    int n(String k) => (d[k] as num?)?.toInt() ?? 0;
+    final brut = d['reactions'];
+    return Emission(
+      id: doc.id,
+      titre: (d['titre'] ?? '').toString(),
+      debut: (d['debut'] is Timestamp) ? (d['debut'] as Timestamp).toDate() : DateTime.now(),
+      duree: n('duree'),
+      nbMorceaux: n('nbMorceaux'),
+      format: (d['format'] ?? 'mp3').toString(),
+      couverture: (d['couverture'] ?? '').toString(),
+      vues: n('vues'),
+      reactions: brut is Map ? brut.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0)) : const {},
+      auteurNom: (d['auteurNom'] ?? '').toString(),
+    );
+  }
+}
+
+class VideoLfa {
+  VideoLfa({
+    required this.id,
+    required this.titre,
+    required this.idVideo,
+    required this.type,
+    required this.description,
+    required this.auteurNom,
+    required this.date,
+  });
+
+  final String id;
+  final String titre;
+  final String idVideo;
+  final String type;
+  final String description;
+  final String auteurNom;
+  final DateTime date;
+
+  factory VideoLfa.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? {};
+    String s(String k) => (d[k] ?? '').toString();
+    return VideoLfa(
+      id: doc.id,
+      titre: s('titre'),
+      idVideo: s('idVideo'),
+      type: s('type'),
+      description: s('description'),
+      auteurNom: s('auteurNom'),
+      date: (d['date'] is Timestamp) ? (d['date'] as Timestamp).toDate() : DateTime.now(),
+    );
   }
 }

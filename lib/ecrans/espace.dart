@@ -2,14 +2,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../actions_article.dart';
 import '../modeles.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'article.dart';
 import 'direct.dart';
+import 'emission.dart';
 import 'redaction.dart';
 import 'statistiques.dart';
+import 'videos.dart';
 
 class EspaceRedaction extends StatelessWidget {
   const EspaceRedaction({super.key});
@@ -145,6 +148,22 @@ class _Espace extends StatelessWidget {
               icon: const Icon(Icons.sensors),
               label: const Text('Lancer un direct'),
             ),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => NouvelleEmission(editeur: ed))),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2F5E44)),
+              icon: const Icon(Icons.headphones),
+              label: const Text('Programmer une émission'),
+            ),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const EditerVideo())),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF187A47)),
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('Ajouter une vidéo'),
+            ),
           ],
           const SizedBox(height: 10),
           OutlinedButton.icon(
@@ -191,6 +210,58 @@ class _Espace extends StatelessWidget {
               );
             },
           ),
+          if (ed.estAdmin) ...[
+            const SizedBox(height: 26),
+            const Text('Articles publiés', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            const Text('Touchez ⋮ pour modifier ou supprimer un article.',
+                style: TextStyle(fontSize: 13, color: gris)),
+            const SizedBox(height: 6),
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('articles')
+                  .orderBy('date', descending: true)
+                  .limit(60)
+                  .snapshots(),
+              builder: (context, snap) {
+                if (snap.hasError) return messageVide('Impossible de charger la liste.');
+                if (!snap.hasData) {
+                  return const Padding(
+                      padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+                }
+                final publies = snap.data!.docs.map(Article.fromDoc).toList();
+                if (publies.isEmpty) return messageVide('Aucun article publié pour le moment.');
+                return Column(
+                  children: [
+                    for (final a in publies)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: LigneArticle(
+                              article: a,
+                              onTap: () => Navigator.of(context)
+                                  .push(MaterialPageRoute(builder: (_) => PageArticle(article: a))),
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, color: gris),
+                            onSelected: (v) {
+                              if (v == 'modifier') modifierArticle(context, ed, a);
+                              if (v == 'supprimer') supprimerAvecConfirmation(context, a);
+                            },
+                            itemBuilder: (_) => [
+                              if (a.directId.isEmpty)
+                                const PopupMenuItem(value: 'modifier', child: Text('Modifier')),
+                              const PopupMenuItem(value: 'supprimer', child: Text('Supprimer')),
+                            ],
+                          ),
+                        ],
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
           const SizedBox(height: 24),
         ],
       ),

@@ -9,6 +9,7 @@ import '../modeles.dart';
 import '../publication.dart';
 import '../session.dart';
 import '../theme.dart';
+import 'videos.dart';
 
 class _PaireQR {
   _PaireQR([String q = '', String r = ''])
@@ -38,6 +39,8 @@ class _RedactionState extends State<Redaction> {
   late final _citation = TextEditingController(text: widget.existant?.citation ?? '');
   late final List<_PaireQR> _qr =
       (widget.existant?.qr ?? []).map((e) => _PaireQR(e.q, e.r)).toList();
+  late final _video = TextEditingController(
+      text: (widget.existant?.video ?? '').isEmpty ? '' : 'https://youtu.be/${widget.existant!.video}');
   late bool _epingle = widget.existant?.epingle ?? false;
   late bool _urgent = widget.existant?.urgent ?? false;
 
@@ -50,6 +53,10 @@ class _RedactionState extends State<Redaction> {
   bool get _admin => widget.editeur.estAdmin;
   bool get _interview => _categorie == 'Interview';
   bool get _portrait => _categorie == 'Portrait';
+  bool get _rencontre => _categorie == 'Rencontre';
+  bool get _avecPersonne => _interview || _portrait || _rencontre;
+  bool get _avecQR => _interview || _rencontre;
+  bool get _avecCitation => _portrait || _rencontre;
 
   @override
   void initState() {
@@ -90,12 +97,18 @@ class _RedactionState extends State<Redaction> {
 
   String? _verifier() {
     if (_titre.text.trim().isEmpty) return 'Ajoutez un titre.';
-    if ((_interview || _portrait) && _personne.text.trim().isEmpty) {
+    if (_video.text.trim().isNotEmpty && idYoutube(_video.text) == null) {
+      return 'Lien YouTube non reconnu. Copiez-le depuis le bouton Partager de YouTube.';
+    }
+    if (_avecPersonne && _personne.text.trim().isEmpty) {
       return 'Indiquez le nom de la personne.';
     }
     final qr = _qr.where((p) => p.q.text.trim().isNotEmpty).toList();
     if (_interview && qr.isEmpty) return 'Ajoutez au moins une question.';
-    if (!_interview && _texte.text.trim().isEmpty) return 'Ajoutez le texte de l’article.';
+    if (_rencontre && qr.isEmpty && _texte.text.trim().isEmpty) {
+      return 'Ajoutez un texte de présentation ou au moins une question.';
+    }
+    if (!_interview && !_rencontre && _texte.text.trim().isEmpty) return 'Ajoutez le texte de l’article.';
     return null;
   }
 
@@ -110,10 +123,11 @@ class _RedactionState extends State<Redaction> {
       'titre': _titre.text.trim(),
       'texte': _texte.text.trim(),
       'categorie': _categorie,
-      'personne': (_interview || _portrait) ? _personne.text.trim() : '',
-      'fonction': (_interview || _portrait) ? _fonction.text.trim() : '',
-      'citation': _portrait ? _citation.text.trim() : '',
-      'qr': _interview
+      'video': idYoutube(_video.text) ?? '',
+      'personne': _avecPersonne ? _personne.text.trim() : '',
+      'fonction': _avecPersonne ? _fonction.text.trim() : '',
+      'citation': _avecCitation ? _citation.text.trim() : '',
+      'qr': _avecQR
           ? _qr
               .where((p) => p.q.text.trim().isNotEmpty)
               .map((p) => QR(p.q.text.trim(), p.r.text.trim()).toMap())
@@ -173,18 +187,24 @@ class _RedactionState extends State<Redaction> {
           _etiquette('Rubrique'),
           DropdownButtonFormField<String>(
             initialValue: _categorie,
-            items: [for (final c in categories) DropdownMenuItem(value: c, child: Text(c))],
+            items: [
+              for (final c in [
+                ...categories,
+                if (!categories.contains(_categorie)) _categorie,
+              ])
+                DropdownMenuItem(value: c, child: Text(c)),
+            ],
             onChanged: (v) => setState(() {
               _categorie = v ?? _categorie;
               if (_interview && _qr.isEmpty) _qr.add(_PaireQR());
             }),
           ),
-          if (_interview || _portrait) ...[
+          if (_avecPersonne) ...[
             _espace(),
-            _etiquette(_interview ? 'Personne interviewée' : 'Personne présentée'),
+            _etiquette(_interview ? 'Personne interviewée' : (_rencontre ? 'Personne rencontrée' : 'Personne présentée')),
             TextField(controller: _personne, decoration: const InputDecoration(hintText: 'Prénom et nom')),
             _espace(),
-            _etiquette(_interview ? 'Sa fonction' : 'Ce qui la rend remarquable, en une ligne'),
+            _etiquette(_interview ? 'Sa fonction' : (_rencontre ? 'Sa fonction ou ce qui la rend remarquable' : 'Ce qui la rend remarquable, en une ligne')),
             TextField(
               controller: _fonction,
               decoration: InputDecoration(
@@ -208,19 +228,19 @@ class _RedactionState extends State<Redaction> {
             ),
           ),
           _espace(),
-          _etiquette(_interview ? 'Introduction (facultative)' : (_portrait ? 'Texte du portrait' : 'Texte')),
+          _etiquette(_interview ? 'Introduction (facultative)' : (_rencontre ? 'Présentation de la personne (facultative si vous ajoutez des questions)' : (_portrait ? 'Texte du portrait' : 'Texte'))),
           TextField(
             controller: _texte,
-            minLines: _interview ? 3 : 7,
+            minLines: (_interview || _rencontre) ? 4 : 7,
             maxLines: null,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               hintText: 'Qui, quoi, quand, où ? Commencez par l’essentiel. Laissez une ligne vide entre deux paragraphes.',
             ),
           ),
-          if (_portrait) ...[
+          if (_avecCitation) ...[
             _espace(),
-            _etiquette('Citation mise en valeur'),
+            _etiquette(_rencontre ? 'Citation mise en valeur (facultative)' : 'Citation mise en valeur'),
             TextField(
               controller: _citation,
               maxLines: 3,
@@ -228,9 +248,9 @@ class _RedactionState extends State<Redaction> {
               decoration: const InputDecoration(hintText: 'Une phrase marquante de la personne'),
             ),
           ],
-          if (_interview) ...[
+          if (_avecQR) ...[
             _espace(),
-            _etiquette('Questions et réponses'),
+            _etiquette(_rencontre ? 'Questions et réponses (facultatif)' : 'Questions et réponses'),
             for (var i = 0; i < _qr.length; i++) _carteQR(i),
             TextButton.icon(
               onPressed: () => setState(() => _qr.add(_PaireQR())),
@@ -241,6 +261,14 @@ class _RedactionState extends State<Redaction> {
           _espace(),
           _etiquette(_photos.isEmpty ? 'Photos (la première sera la photo principale)' : 'Photos'),
           _zonePhotos(),
+          _espace(),
+          _etiquette('Vidéo YouTube (facultative)'),
+          TextField(
+            controller: _video,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            decoration: const InputDecoration(hintText: 'Collez le lien de la vidéo'),
+          ),
           if (_admin) ...[
             _espace(),
             Container(

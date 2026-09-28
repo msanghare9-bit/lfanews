@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+from datetime import datetime
 
 import requests
 from google.auth.transport.requests import Request
@@ -110,5 +111,45 @@ for ligne in r.json():
         f"{BASE}/directs/{ident}?updateMask.fieldPaths=notifie",
         headers=H, json={"fields": {"notifie": {"booleanValue": True}}}, timeout=30,
     ).raise_for_status()
+
+# --- Émissions audio nouvellement programmées ---
+JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+requete["structuredQuery"]["from"] = [{"collectionId": "emissions"}]
+r = requests.post(BASE + ":runQuery", headers=H, json=requete, timeout=30)
+r.raise_for_status()
+for ligne in r.json():
+    doc = ligne.get("document")
+    if not doc:
+        continue
+    f = doc.get("fields", {})
+    ident = doc["name"].split("/")[-1]
+    titre = f.get("titre", {}).get("stringValue", "Nouvelle émission")
+    quand = ""
+    ts = f.get("debut", {}).get("timestampValue", "")
+    if ts:
+        d = datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S")
+        quand = f" · {JOURS[d.weekday()]} à {d:%H:%M}"
+    message = {
+        "message": {
+            "topic": "tous",
+            "notification": {"title": "ÉMISSION", "body": titre + quand},
+            "data": {"emissionId": ident},
+            "android": {
+                "priority": "HIGH",
+                "notification": {"icon": "ic_notification", "color": "#2F5E44"},
+            },
+        }
+    }
+    s = requests.post(
+        f"https://fcm.googleapis.com/v1/projects/{projet}/messages:send",
+        headers=H, json=message, timeout=30,
+    )
+    print("emission", ident, s.status_code, s.text[:200])
+    if s.ok:
+        requests.patch(
+            f"{BASE}/emissions/{ident}?updateMask.fieldPaths=notifie",
+            headers=H, json={"fields": {"notifie": {"booleanValue": True}}}, timeout=30,
+        ).raise_for_status()
+        envoyes += 1
 
 print(f"{envoyes} notification(s) envoyée(s).")

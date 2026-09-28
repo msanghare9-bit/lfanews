@@ -10,6 +10,7 @@ import '../direct_service.dart';
 import '../images.dart';
 import '../modeles.dart';
 import '../session.dart';
+import '../stats.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'article.dart';
@@ -83,17 +84,24 @@ class _PageDirectState extends State<PageDirect> {
                   child: Text(d.titre, style: titre(26)),
                 ),
                 if (d.estMatch) _Score(direct: d, modifiable: equipe),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.visibility_outlined, size: 16, color: gris),
-                      const SizedBox(width: 5),
-                      Text('${d.vues} personne${d.vues > 1 ? 's ont' : ' a'} suivi ce direct',
-                          style: const TextStyle(fontSize: 13, color: gris)),
-                    ],
+                if (ed != null)
+                  StreamBuilder<Stat>(
+                    stream: suivreStat('direct_${d.id}'),
+                    builder: (context, sv) {
+                      final n = sv.data?.vues ?? 0;
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.visibility_outlined, size: 16, color: gris),
+                            const SizedBox(width: 5),
+                            Text('$n personne${n > 1 ? 's ont' : ' a'} suivi ce direct (rédaction seulement)',
+                                style: const TextStyle(fontSize: 13, color: gris)),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                ),
                 if (equipe) _Composer(editeur: ed, directId: d.id),
                 _Fil(directId: d.id, editeur: ed, match: d.estMatch),
                 if (articleId != null) Reactions(id: articleId!, equipe: ed != null),

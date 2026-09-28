@@ -97,9 +97,7 @@ service cloud.firestore {
       allow create, delete: if estAdmin();
       allow update: if estAdmin()
         || (estEditeur() && resource.data.enCours == true
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB']))
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vues'])
-            && request.resource.data.vues - resource.data.get('vues', 0) == 1);
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB']));
       match /messages/{m} {
         allow read: if true;
         allow create: if estEditeur()
@@ -113,6 +111,24 @@ service cloud.firestore {
     }
 
     // Présentation de l'équipe de la rédaction.
+    // Émissions audio préenregistrées : lisibles par tous, publiées par l'administrateur.
+    match /emissions/{id} {
+      allow read: if true;
+      allow create, delete: if estAdmin();
+      allow update: if estAdmin()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
+      match /morceaux/{m} {
+        allow read: if true;
+        allow write: if estAdmin();
+      }
+    }
+
+    // Vidéos YouTube présentées dans l'application.
+    match /videos/{id} {
+      allow read: if true;
+      allow write: if estAdmin();
+    }
+
     match /equipe/{m} {
       allow read: if true;
       allow write: if estAdmin();
@@ -138,7 +154,7 @@ service cloud.firestore {
 
     // Le message de bienvenue est public ; le reste de la configuration est réservé.
     match /config/{doc} {
-      allow read: if doc == 'accueil' || estAdmin();
+      allow read: if doc in ['accueil', 'contact'] || estAdmin();
       allow write: if estAdmin();
     }
   }

@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import '../modeles.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../actions_article.dart';
 import '../direct_service.dart';
+import '../session.dart';
 import 'apropos.dart';
 import 'article.dart';
 import 'cours.dart';
+import '../emission_service.dart';
 import 'direct.dart';
+import 'emission.dart';
+import 'videos.dart';
 import 'espace.dart';
 import 'recherche.dart';
 
@@ -28,6 +33,12 @@ class _AccueilState extends State<Accueil> {
       .limit(150)
       .snapshots();
   final _directs = directsEnCours();
+  final _derniereEmission = emissions.orderBy('debut', descending: true).limit(1).snapshots();
+
+  void _actions(Article a) {
+    final ed = Session.instance.editeur.value;
+    if (ed != null && ed.estAdmin) menuActionsArticle(context, ed, a);
+  }
 
   void _ouvrir(Article a) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => PageArticle(article: a)));
@@ -101,6 +112,20 @@ class _AccueilState extends State<Accueil> {
               ],
             ),
           ),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _derniereEmission,
+            builder: (context, s) {
+              if (!s.hasData || s.data!.docs.isEmpty) return const SizedBox.shrink();
+              final e = Emission.fromDoc(s.data!.docs.first);
+              final ecart = DateTime.now().difference(e.debut).abs();
+              if (ecart > const Duration(hours: 48)) return const SizedBox.shrink();
+              return BandeauEmission(
+                emission: e,
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => PageEmission(emissionId: e.id))),
+              );
+            },
+          ),
           if (urgents.isNotEmpty)
             BandeauUrgent(article: urgents.first, onTap: () => _ouvrir(urgents.first)),
           _puces(),
@@ -109,14 +134,14 @@ class _AccueilState extends State<Accueil> {
           if (une != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-              child: ApparitionDouce(enfant: CarteUne(article: une, onTap: () => _ouvrir(une!))),
+              child: ApparitionDouce(enfant: CarteUne(article: une, onTap: () => _ouvrir(une!), onLongPress: () => _actions(une!))),
             ),
           for (final e in reste.asMap().entries)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ApparitionDouce(
                 indice: e.key,
-                enfant: LigneArticle(article: e.value, onTap: () => _ouvrir(e.value)),
+                enfant: LigneArticle(article: e.value, onTap: () => _ouvrir(e.value), onLongPress: () => _actions(e.value)),
               ),
             ),
         ],
@@ -127,6 +152,18 @@ class _AccueilState extends State<Accueil> {
         titleSpacing: 16,
         title: const TitreAppli(),
         actions: [
+          IconButton(
+            tooltip: 'Vidéos',
+            icon: const Icon(Icons.play_circle_outline, color: vert),
+            onPressed: () =>
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ListeVideos())),
+          ),
+          IconButton(
+            tooltip: 'Émissions',
+            icon: const Icon(Icons.headphones_outlined, color: vert),
+            onPressed: () =>
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ListeEmissions())),
+          ),
           IconButton(
             tooltip: 'À propos de LFA News',
             icon: const Icon(Icons.info_outline, color: vert),

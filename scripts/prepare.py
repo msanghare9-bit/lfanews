@@ -86,7 +86,17 @@ for p in ("INTERNET", "POST_NOTIFICATIONS"):
     if f"android.permission.{p}" not in m:
         perms += f'    <uses-permission android:name="android.permission.{p}"/>\n'
 m = m.replace("    <application", perms + "    <application", 1)
+intents = (
+    '\n        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="tel"/></intent>'
+    '\n        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="mailto"/></intent>'
+)
+if "<queries>" in m:
+    m = m.replace("<queries>", "<queries>" + intents, 1)
+else:
+    m = m.replace("    <application", "    <queries>" + intents + "\n    </queries>\n    <application", 1)
 i = m.index("<application")
+fin = m.index(">", i)
+m = m[:fin] + ' android:usesCleartextTraffic="true"' + m[fin:]
 j = m.index(">", i) + 1
 meta = '''
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon"

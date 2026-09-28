@@ -66,7 +66,11 @@ Future<void> compterVueDirect(String directId) async {
     if (vus.contains(directId)) return;
     vus.add(directId);
     await p.setStringList('directs_vus', vus);
-    unawaited(directs.doc(directId).update({'vues': FieldValue.increment(1)}).catchError((_) {}));
+    unawaited(_db
+        .collection('stats')
+        .doc('direct_$directId')
+        .set({'vues': FieldValue.increment(1)}, SetOptions(merge: true))
+        .catchError((_) {}));
   } catch (_) {}
 }
 

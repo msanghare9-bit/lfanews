@@ -69,9 +69,10 @@ class Photo extends StatelessWidget {
 }
 
 class CarteUne extends StatelessWidget {
-  const CarteUne({super.key, required this.article, required this.onTap});
+  const CarteUne({super.key, required this.article, required this.onTap, this.onLongPress});
   final Article article;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +117,7 @@ class CarteUne extends StatelessWidget {
               ),
             ),
             Positioned.fill(
-              child: Material(color: Colors.transparent, child: InkWell(onTap: onTap)),
+              child: Material(color: Colors.transparent, child: InkWell(onTap: onTap, onLongPress: onLongPress)),
             ),
           ],
         ),
@@ -127,15 +128,17 @@ class CarteUne extends StatelessWidget {
 }
 
 class LigneArticle extends StatelessWidget {
-  const LigneArticle({super.key, required this.article, required this.onTap, this.etiquette});
+  const LigneArticle({super.key, required this.article, required this.onTap, this.etiquette, this.onLongPress});
   final Article article;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final String? etiquette;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(10),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 9),
@@ -153,7 +156,7 @@ class LigneArticle extends StatelessWidget {
                   height: 80,
                   child: Photo(
                     octets: article.octets,
-                    icone: article.estPortrait || article.estInterview
+                    icone: article.estPortrait || article.estInterview || article.estRencontre
                         ? Icons.person_outline
                         : Icons.image_outlined,
                   ),

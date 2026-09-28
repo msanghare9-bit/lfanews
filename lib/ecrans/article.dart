@@ -12,6 +12,7 @@ import '../stats.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'direct.dart';
+import 'videos.dart';
 import 'redaction.dart';
 
 class PageArticle extends StatefulWidget {
@@ -117,10 +118,15 @@ class _PageArticleState extends State<PageArticle> {
                   if (ed != null && !a.estProposition) _barreStats(),
                   if (a.estInterview)
                     _interview(principale)
-                  else if (a.estPortrait)
+                  else if (a.estPortrait || a.estRencontre)
                     _portrait(principale)
                   else
                     _standard(principale),
+                  if (a.video.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                      child: LecteurVideo(idVideo: a.video),
+                    ),
                   if (galerie.isNotEmpty) _galerie(photos),
                   if (!a.estProposition) Reactions(id: a.id, equipe: ed != null),
                   const SizedBox(height: 24),
@@ -251,8 +257,8 @@ class _PageArticleState extends State<PageArticle> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('PORTRAIT',
-                          style: TextStyle(
+                      Text(a.estRencontre ? 'RENCONTRE' : 'PORTRAIT',
+                          style: const TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1, color: Color(0xFF8FD3A8))),
                       const SizedBox(height: 4),
                       Text(a.personne, style: titre(32, couleur: Colors.white)),
@@ -296,6 +302,20 @@ class _PageArticleState extends State<PageArticle> {
                   ),
                 ),
               Paragraphes(suite),
+              for (final e in a.qr)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(e.q,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700, height: 1.4, color: vert)),
+                      const SizedBox(height: 6),
+                      Text(e.r, style: const TextStyle(fontSize: 16, height: 1.6)),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),

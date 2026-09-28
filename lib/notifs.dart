@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'app.dart';
 import 'ecrans/article.dart';
 import 'ecrans/direct.dart';
+import 'ecrans/emission.dart';
 import 'modeles.dart';
 
 Future<void> initNotifications() async {
@@ -37,6 +38,11 @@ Future<void> _ouvrir(RemoteMessage msg) async {
   final direct = msg.data['directId'];
   if (direct is String && direct.isNotEmpty) {
     navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => PageDirect(directId: direct)));
+    return;
+  }
+  final emission = msg.data['emissionId'];
+  if (emission is String && emission.isNotEmpty) {
+    navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => PageEmission(emissionId: emission)));
     return;
   }
   final id = msg.data['articleId'];

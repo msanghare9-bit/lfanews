@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app.dart';
 import '../images.dart';
@@ -21,6 +22,7 @@ const _messageParDefaut =
 const _signatureParDefaut = 'La rédaction de LFA News';
 
 final _config = FirebaseFirestore.instance.collection('config').doc('accueil');
+final _contact = FirebaseFirestore.instance.collection('config').doc('contact');
 final _equipe = FirebaseFirestore.instance.collection('equipe');
 final _personnel = FirebaseFirestore.instance.collection('personnel');
 
@@ -212,6 +214,8 @@ class _PageAProposState extends State<PageAPropos> with SingleTickerProviderStat
                   ],
                 ),
               ),
+              const Divider(height: 40, color: bordure),
+              _BlocContact(admin: admin),
               const Divider(height: 40, color: bordure),
               const Text("L'équipe de la rédaction", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
               const SizedBox(height: 10),
@@ -609,6 +613,154 @@ class _EditerPersonnelState extends State<EditerPersonnel> {
             controller: _role,
             decoration: const InputDecoration(labelText: 'Fonction', hintText: 'Proviseur, surveillant général…'),
           ),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _enregistrer, child: const Text('Enregistrer')),
+        ],
+      ),
+    );
+  }
+}
+
+class Contact {
+  const Contact(this.telephone, this.email);
+  final String telephone;
+  final String email;
+}
+
+Stream<Contact> suivreContact() => _contact.snapshots().map((d) {
+      final m = d.data();
+      return Contact((m?['telephone'] ?? '').toString().trim(), (m?['email'] ?? '').toString().trim());
+    }).handleError((_) {});
+
+Future<void> _ouvrir(Uri uri) async {
+  try {
+    final ok = await launchUrl(uri);
+    if (!ok) afficher("Impossible d'ouvrir ce lien sur ce téléphone.");
+  } catch (_) {
+    afficher("Impossible d'ouvrir ce lien sur ce téléphone.");
+  }
+}
+
+class _BlocContact extends StatelessWidget {
+  const _BlocContact({required this.admin});
+  final bool admin;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Contact>(
+      stream: suivreContact(),
+      initialData: const Contact('', ''),
+      builder: (context, s) {
+        final c = s.data ?? const Contact('', '');
+        final vide = c.telephone.isEmpty && c.email.isEmpty;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Nous contacter', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                ),
+                if (admin)
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context)
+                        .push(MaterialPageRoute(builder: (_) => EditerContact(actuel: c))),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Modifier'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            if (vide)
+              const Text('Les coordonnées de la rédaction seront bientôt disponibles.',
+                  style: TextStyle(color: gris, height: 1.4))
+            else ...[
+              if (c.telephone.isNotEmpty)
+                _ligneContact(Icons.phone_outlined, c.telephone, 'Appeler',
+                    () => _ouvrir(Uri(scheme: 'tel', path: c.telephone.replaceAll(RegExp(r'[^0-9+]'), '')))),
+              if (c.email.isNotEmpty)
+                _ligneContact(Icons.mail_outline, c.email, 'Écrire un e-mail',
+                    () => _ouvrir(Uri(scheme: 'mailto', path: c.email, queryParameters: {'subject': 'LFA News'}))),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _ligneContact(IconData icone, String valeur, String action, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(color: vertPale, borderRadius: BorderRadius.circular(12)),
+          child: Row(
+            children: [
+              CircleAvatar(radius: 20, backgroundColor: vert, child: Icon(icone, color: Colors.white, size: 20)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(valeur, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    Text(action, style: const TextStyle(fontSize: 12, color: gris)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: gris),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class EditerContact extends StatefulWidget {
+  const EditerContact({super.key, required this.actuel});
+  final Contact actuel;
+
+  @override
+  State<EditerContact> createState() => _EditerContactState();
+}
+
+class _EditerContactState extends State<EditerContact> {
+  late final _tel = TextEditingController(text: widget.actuel.telephone);
+  late final _mail = TextEditingController(text: widget.actuel.email);
+
+  void _enregistrer() {
+    unawaited(_contact
+        .set({'telephone': _tel.text.trim(), 'email': _mail.text.trim()})
+        .catchError((e) => afficher('Échec : $e')));
+    afficher('Coordonnées enregistrées.');
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nous contacter')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _tel,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'Téléphone', hintText: '+221 77 000 00 00'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _mail,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            decoration: const InputDecoration(labelText: 'Adresse e-mail'),
+          ),
+          const SizedBox(height: 8),
+          const Text('Laissez un champ vide pour ne pas l’afficher.',
+              style: TextStyle(fontSize: 12, color: gris)),
           const SizedBox(height: 20),
           FilledButton(onPressed: _enregistrer, child: const Text('Enregistrer')),
         ],

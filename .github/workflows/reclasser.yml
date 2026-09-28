@@ -6,9 +6,24 @@ on:
 jobs:
   reclasser:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - run: pip install google-auth requests
-      - run: python3 scripts/reclasser.py
+      - name: Reclasser
+        shell: bash
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: python3 scripts/reclasser.py 2>&1 | tee /tmp/resultat.txt
+      - name: Conserver le résultat
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout --orphan resultat
+          git rm -rf --quiet . || true
+          cp /tmp/resultat.txt resultat.txt || echo "aucun résultat" > resultat.txt
+          git add resultat.txt
+          git commit -q -m "Résultat du reclassement"
+          git push -f origin resultat

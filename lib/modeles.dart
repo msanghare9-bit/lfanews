@@ -239,6 +239,7 @@ class Cours {
     required this.matiere,
     required this.titre,
     required this.texte,
+    this.auteurId = '',
     required this.auteurNom,
     required this.date,
     this.exercices = const [],
@@ -252,6 +253,7 @@ class Cours {
   final String matiere;
   final String titre;
   final String texte;
+  final String auteurId;
   final String auteurNom;
   final DateTime date;
   final List<QR> exercices; // q = énoncé, r = corrigé
@@ -269,6 +271,7 @@ class Cours {
       matiere: s('matiere'),
       titre: s('titre'),
       texte: s('texte'),
+      auteurId: s('auteurId'),
       auteurNom: s('auteurNom'),
       date: (d['date'] is Timestamp) ? (d['date'] as Timestamp).toDate() : DateTime.now(),
       exercices: d['exercices'] is List

@@ -19,7 +19,7 @@ dependencies:
   share_plus: any
   http: any
   shared_preferences: any
-  file_picker: any
+  file_selector: any
   just_audio: any
   url_launcher: any
   youtube_player_iframe: any

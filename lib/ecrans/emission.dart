@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -510,19 +510,15 @@ class _NouvelleEmissionState extends State<NouvelleEmission> {
   }
 
   Future<void> _choisirAudio() async {
-    final r = await FilePicker.platform.pickFiles(type: FileType.any, withData: true);
-    if (r == null || r.files.isEmpty) return;
-    final f = r.files.first;
-    final octets = f.bytes;
-    if (octets == null) {
-      afficher('Impossible de lire ce fichier.');
+    final f = await openFile();
+    if (f == null) return;
+    final taille = await f.length();
+    if (taille > tailleMaxOctets) {
+      afficher('Ce fichier fait ${(taille / 1048576).toStringAsFixed(1)} Mo. Maximum : 3 Mo (environ 5 minutes de voix).');
       return;
     }
-    if (octets.length > tailleMaxOctets) {
-      afficher('Ce fichier fait ${(octets.length / 1048576).toStringAsFixed(1)} Mo. Maximum : 3 Mo (environ 5 minutes de voix).');
-      return;
-    }
-    final format = (f.extension ?? 'mp3').toLowerCase();
+    final octets = await f.readAsBytes();
+    final format = f.name.contains('.') ? f.name.split('.').last.toLowerCase() : 'mp3';
     setState(() => _lecture = true);
     final d = await dureeDe(octets, format);
     if (!mounted) return;

@@ -74,6 +74,12 @@ class _PageDirectState extends State<PageDirect> {
                   ),
                   TextButton(onPressed: () => _terminer(context, ed, d), child: const Text('Terminer')),
                 ],
+                if (ed != null && ed.estAdmin && !d.enCours)
+                  IconButton(
+                    tooltip: 'Supprimer ce direct',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _supprimerArchive(context, d),
+                  ),
               ],
             ),
             body: ListView(
@@ -111,6 +117,28 @@ class _PageDirectState extends State<PageDirect> {
         },
       ),
     );
+  }
+
+  Future<void> _supprimerArchive(BuildContext context, Direct d) async {
+    final oui = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Supprimer ce direct ?'),
+        content: Text('« ${d.titre} » et tout son fil seront définitivement supprimés.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Supprimer')),
+        ],
+      ),
+    );
+    if (oui != true) return;
+    try {
+      await supprimerDirectArchive(d.id);
+      afficher('Direct supprimé.');
+      if (context.mounted) Navigator.of(context).pop();
+    } catch (e) {
+      afficher('Échec : $e');
+    }
   }
 
   Future<void> _supprimer(BuildContext context, Direct d) async {

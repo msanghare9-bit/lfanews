@@ -54,7 +54,9 @@ if kts.exists():
 
     buildTypes {{''', 1)
     t = t.replace('signingConfig = signingConfigs.getByName("debug")',
-                  'signingConfig = signingConfigs.getByName("release")')
+                  'signingConfig = signingConfigs.getByName("release")\n'
+                  '            isMinifyEnabled = false\n'
+                  '            isShrinkResources = false')
     kts.write_text(t, encoding="utf-8")
     ok = 'signingConfigs.getByName("release")' in t
 else:
@@ -71,7 +73,10 @@ else:
     }}
 
     buildTypes {{''', 1)
-    t = t.replace("signingConfig signingConfigs.debug", "signingConfig signingConfigs.release")
+    t = t.replace("signingConfig signingConfigs.debug",
+                  "signingConfig signingConfigs.release\n"
+                  "            minifyEnabled false\n"
+                  "            shrinkResources false")
     groovy.write_text(t, encoding="utf-8")
     ok = "signingConfigs.release" in t
 if not ok:
@@ -118,5 +123,17 @@ for dossier in (RACINE / "android_res").iterdir():
 (res / "values" / "lfa_couleurs.xml").write_text(
     '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
     '    <color name="lfa_vert">#0F6B3A</color>\n</resources>\n', encoding="utf-8")
+
+# --- Mémoire Gradle : le nombre de dépendances a augmenté (PDF, vidéo, audio),
+# on laisse plus de mémoire au compilateur pour éviter un arrêt en cours de route.
+props = APP / "android" / "gradle.properties"
+t = props.read_text(encoding="utf-8") if props.exists() else ""
+t = re.sub(r"(?m)^org\.gradle\.jvmargs=.*$", "", t)
+t = t.rstrip() + (
+    "\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m\n"
+    "org.gradle.parallel=false\n"
+    "kotlin.incremental=false\n"
+)
+props.write_text(t, encoding="utf-8")
 
 print("Préparation terminée.")

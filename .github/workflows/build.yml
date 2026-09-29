@@ -76,3 +76,18 @@ jobs:
         with:
           name: LFANEWS-apk
           path: app_build/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Préparer le nom de la version
+        id: version
+        run: |
+          V=$(grep '^version:' pubspec.yaml | head -1 | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          cp app_build/build/app/outputs/flutter-apk/app-release.apk "LFANEWS-$V.apk"
+
+      - name: Publier la version (lien public de téléchargement)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: LFANEWS ${{ steps.version.outputs.version }}
+          files: LFANEWS-${{ steps.version.outputs.version }}.apk
+          make_latest: true

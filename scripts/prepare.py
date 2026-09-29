@@ -89,6 +89,7 @@ m = m.replace("    <application", perms + "    <application", 1)
 intents = (
     '\n        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="tel"/></intent>'
     '\n        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="mailto"/></intent>'
+    '\n        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent>'
 )
 if "<queries>" in m:
     m = m.replace("<queries>", "<queries>" + intents, 1)

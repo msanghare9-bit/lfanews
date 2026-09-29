@@ -1,7 +1,7 @@
 name: lfanews
 description: Actualités du Lycée Franco-Arabe de Kébémer
 publish_to: 'none'
-version: 1.6.1+1
+version: 1.7.0+1
 
 environment:
   sdk: ^3.5.0
@@ -24,6 +24,7 @@ dependencies:
   url_launcher: any
   youtube_player_iframe: any
   syncfusion_flutter_pdfviewer: any
+  package_info_plus: any
 
 flutter:
   uses-material-design: true

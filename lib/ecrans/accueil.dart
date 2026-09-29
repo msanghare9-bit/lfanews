@@ -12,6 +12,7 @@ import 'article.dart';
 import 'cours.dart';
 import '../emission_service.dart';
 import 'direct.dart';
+import '../maj.dart';
 import 'emission.dart';
 import 'videos.dart';
 import 'espace.dart';
@@ -99,6 +100,7 @@ class _AccueilState extends State<Accueil> {
       corps = ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          const BandeauMiseAJour(),
           StreamBuilder<List<Direct>>(
             stream: _directs,
             builder: (context, s) => Column(

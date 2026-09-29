@@ -94,13 +94,9 @@ class _PageArticleState extends State<PageArticle> {
             final photos = s.data ?? const <Uint8List>[];
             final principale = photos.isNotEmpty ? photos.first : a.octets;
             final galerie = photos.length > 1 ? photos.sublist(1) : const <Uint8List>[];
-            final surVert = a.estInterview;
             final barre = _barreBas(ed, admin, auteur);
             return Scaffold(
               appBar: AppBar(
-                backgroundColor: surVert ? vert : Colors.white,
-                foregroundColor: surVert ? Colors.white : encre,
-                surfaceTintColor: surVert ? vert : Colors.white,
                 title: a.estProposition
                     ? const Text('En attente de validation', style: TextStyle(fontSize: 16))
                     : null,

@@ -95,7 +95,7 @@ class ListeEmissions extends StatelessWidget {
       builder: (context, ed, _) {
         final admin = ed?.estAdmin ?? false;
         return Scaffold(
-          appBar: AppBar(title: Text('Émissions', style: titre(22))),
+          appBar: AppBar(title: Text('Émissions', style: titre(22, couleur: Colors.white))),
           floatingActionButton: admin
               ? FloatingActionButton.extended(
                   onPressed: () => Navigator.of(context)

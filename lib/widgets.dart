@@ -31,16 +31,20 @@ class TitreAppli extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const LogoLfa(taille: 38),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            child: const LogoLfa(taille: 34),
+          ),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('LFA NEWS', style: titre(23, couleur: vert).copyWith(height: 1)),
+              Text('LFA NEWS', style: titre(23, couleur: Colors.white).copyWith(height: 1)),
               const SizedBox(height: 2),
               const Text('Lycée Franco-Arabe de Kébémer',
-                  style: TextStyle(fontSize: 11.5, color: gris, fontWeight: FontWeight.w400)),
+                  style: TextStyle(fontSize: 11.5, color: Color(0xFFD6EDDD), fontWeight: FontWeight.w400)),
             ],
           ),
         ],

@@ -120,7 +120,7 @@ class _ListeVideosState extends State<ListeVideos> {
       builder: (context, ed, _) {
         final admin = ed?.estAdmin ?? false;
         return Scaffold(
-          appBar: AppBar(title: Text('Vidéos', style: titre(22))),
+          appBar: AppBar(title: Text('Vidéos', style: titre(22, couleur: Colors.white))),
           floatingActionButton: admin
               ? FloatingActionButton.extended(
                   onPressed: () =>

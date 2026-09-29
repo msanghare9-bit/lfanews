@@ -69,7 +69,7 @@ class _ConnexionState extends State<Connexion> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Rédaction', style: titre(22))),
+      appBar: AppBar(title: Text('Rédaction', style: titre(22, couleur: Colors.white))),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -128,7 +128,7 @@ class _EspaceMembre extends StatelessWidget {
     final Query<Map<String, dynamic>> requete = col.where('auteurId', isEqualTo: ed.uid);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Rédaction', style: titre(22)),
+        title: Text('Rédaction', style: titre(22, couleur: Colors.white)),
         actions: [
           IconButton(
             tooltip: 'Se déconnecter',
@@ -201,7 +201,7 @@ class _EspaceProfesseur extends StatelessWidget {
       builder: (context, actif, _) {
         return Scaffold(
           appBar: AppBar(
-            title: Text('Rédaction', style: titre(22)),
+            title: Text('Rédaction', style: titre(22, couleur: Colors.white)),
             actions: [
               IconButton(
                 tooltip: 'Se déconnecter',
@@ -432,7 +432,7 @@ class _EspaceAdminState extends State<_EspaceAdmin> with SingleTickerProviderSta
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Rédaction', style: titre(22)),
+        title: Text('Rédaction', style: titre(22, couleur: Colors.white)),
         actions: [
           IconButton(
             tooltip: 'Se déconnecter',
@@ -442,9 +442,9 @@ class _EspaceAdminState extends State<_EspaceAdmin> with SingleTickerProviderSta
         ],
         bottom: TabBar(
           controller: _onglets,
-          labelColor: vert,
-          unselectedLabelColor: gris,
-          indicatorColor: vert,
+          labelColor: Colors.white,
+          unselectedLabelColor: Color(0xFFBFE0CC),
+          indicatorColor: Colors.white,
           tabs: const [Tab(text: 'Responsable'), Tab(text: 'Rédacteurs'), Tab(text: 'Professeurs')],
         ),
       ),

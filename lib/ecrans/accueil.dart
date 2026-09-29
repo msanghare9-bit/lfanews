@@ -156,19 +156,19 @@ class _AccueilState extends State<Accueil> {
         actions: [
           IconButton(
             tooltip: 'Vidéos',
-            icon: const Icon(Icons.play_circle_outline, color: vert),
+            icon: const Icon(Icons.play_circle_outline, color: Colors.white),
             onPressed: () =>
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ListeVideos())),
           ),
           IconButton(
             tooltip: 'Émissions',
-            icon: const Icon(Icons.headphones_outlined, color: vert),
+            icon: const Icon(Icons.headphones_outlined, color: Colors.white),
             onPressed: () =>
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ListeEmissions())),
           ),
           IconButton(
             tooltip: 'À propos de LFA News',
-            icon: const Icon(Icons.info_outline, color: vert),
+            icon: const Icon(Icons.info_outline, color: Colors.white),
             onPressed: () =>
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PageAPropos())),
           ),

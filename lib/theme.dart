@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 const vert = Color(0xFF0F6B3A);
 const vertVif = Color(0xFF2E9E5B);
@@ -34,11 +35,19 @@ ThemeData lfaTheme() {
   return base.copyWith(
     textTheme: base.textTheme.apply(bodyColor: encre, displayColor: encre),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
-      foregroundColor: encre,
+      backgroundColor: vert,
+      foregroundColor: Colors.white,
       elevation: 0,
-      scrolledUnderElevation: 0.5,
-      surfaceTintColor: Colors.white,
+      scrolledUnderElevation: 2,
+      surfaceTintColor: vert,
+      iconTheme: IconThemeData(color: Colors.white),
+      actionsIconTheme: IconThemeData(color: Colors.white),
+      titleTextStyle: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'Archivo'),
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: vert,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,

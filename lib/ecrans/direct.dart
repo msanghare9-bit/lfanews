@@ -59,10 +59,10 @@ class _PageDirectState extends State<PageDirect> {
                     const SizedBox(width: 6),
                   ],
                   Text(d.enCours ? 'En direct' : 'Fil en direct',
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
-                          color: d.enCours ? vert : encre)),
+                          color: Colors.white)),
                 ],
               ),
               actions: [
@@ -72,7 +72,7 @@ class _PageDirectState extends State<PageDirect> {
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () => _supprimer(context, d),
                   ),
-                  TextButton(onPressed: () => _terminer(context, ed, d), child: const Text('Terminer')),
+                  TextButton(onPressed: () => _terminer(context, ed, d), style: TextButton.styleFrom(foregroundColor: Colors.white), child: const Text('Terminer')),
                 ],
                 if (ed != null && ed.estAdmin && !d.enCours)
                   IconButton(

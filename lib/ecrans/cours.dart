@@ -61,7 +61,7 @@ class _Cours0State extends State<Cours0> {
                       _niveau = null;
                     }
                   })),
-            title: Text(titreEcran, style: titre(20)),
+            title: Text(titreEcran, style: titre(20, couleur: Colors.white)),
           ),
           floatingActionButton: (ed?.peutCours ?? false) &&
                   (ed!.role != 'professeur' || Session.instance.profActif.value != null) &&

@@ -51,7 +51,7 @@ class _StatistiquesState extends State<Statistiques> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Statistiques', style: titre(22))),
+      appBar: AppBar(title: Text('Statistiques', style: titre(22, couleur: Colors.white))),
       body: FutureBuilder<List<_Ligne>>(
         future: _donnees,
         builder: (context, s) {

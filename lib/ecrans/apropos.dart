@@ -138,12 +138,12 @@ class _PageAProposState extends State<PageAPropos> with SingleTickerProviderStat
         final admin = ed?.estAdmin ?? false;
         return Scaffold(
           appBar: AppBar(
-            title: Text('À propos', style: titre(22)),
+            title: Text('À propos', style: titre(22, couleur: Colors.white)),
             bottom: TabBar(
               controller: _onglets,
-              labelColor: vert,
-              unselectedLabelColor: gris,
-              indicatorColor: vert,
+              labelColor: Colors.white,
+              unselectedLabelColor: Color(0xFFBFE0CC),
+              indicatorColor: Colors.white,
               tabs: const [Tab(text: 'La rédaction'), Tab(text: 'Établissement')],
             ),
           ),

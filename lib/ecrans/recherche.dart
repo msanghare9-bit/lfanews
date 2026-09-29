@@ -25,7 +25,7 @@ class _RechercheState extends State<Recherche> {
             .where((a) => '${a.titre} ${a.texte} ${a.personne} ${a.categorie}'.toLowerCase().contains(q))
             .toList();
     return Scaffold(
-      appBar: AppBar(title: Text('Rechercher', style: titre(22))),
+      appBar: AppBar(title: Text('Rechercher', style: titre(22, couleur: Colors.white))),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [

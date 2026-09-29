@@ -210,7 +210,7 @@ const series = ['L', 'S'];
 
 /// Matières dont le contenu diffère selon la série ; les autres matières
 /// sont communes aux deux séries, à partir de la Seconde.
-const matieresDifferentesSelonSerie = {'Mathématiques', 'Physique-Chimie', 'SVT', 'Philosophie'};
+const matieresDifferentesSelonSerie = {'Mathématiques', 'Physique-Chimie', 'SVT', 'Philosophie', 'Anglais'};
 
 /// Les matières proposées dépendent du niveau : la Philosophie n'existe
 /// qu'en Terminale, et la Physique-Chimie n'est pas enseignée en 6e et 5e.

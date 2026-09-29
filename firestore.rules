@@ -143,19 +143,29 @@ service cloud.firestore {
     }
 
     // Cours par niveau et matière, écrits par l'administrateur et les professeurs.
+    // Le compte des professeurs est partagé : la liste de leurs noms, avec
+    // leurs niveaux et matières, est à part, lisible par l'équipe connectée.
+    match /profs_liste/{id} {
+      allow read: if estEditeur();
+      allow write: if estAdmin();
+    }
     function fichePersonnelle() {
       return get(/databases/$(database)/documents/editeurs/$(request.auth.uid)).data;
     }
     function peutCours() {
       return estEditeur() && fichePersonnelle().role in ['admin', 'professeur'];
     }
-    // Un professeur n'ajoute que dans les niveaux et matières qui lui ont été
-    // assignés (listes vides = aucune restriction, ce qui reste vrai pour l'admin).
+    // Pour un professeur, le nom choisi doit exister dans profs_liste et
+    // autoriser ce niveau et cette matière (listes vides = sans restriction).
     function niveauMatiereAutorises(d) {
-      let fiche = fichePersonnelle();
-      return fiche.role == 'admin'
-        || ((!('niveaux' in fiche) || fiche.niveaux.size() == 0 || d.niveau in fiche.niveaux)
-            && (!('matieres' in fiche) || fiche.matieres.size() == 0 || d.matiere in fiche.matieres));
+      return fichePersonnelle().role == 'admin'
+        || (d.profId is string && d.profId.size() > 0
+            && exists(/databases/$(database)/documents/profs_liste/$(d.profId))
+            && get(/databases/$(database)/documents/profs_liste/$(d.profId)).data.nom == d.auteurNom
+            && (get(/databases/$(database)/documents/profs_liste/$(d.profId)).data.niveaux.size() == 0
+                || d.niveau in get(/databases/$(database)/documents/profs_liste/$(d.profId)).data.niveaux)
+            && (get(/databases/$(database)/documents/profs_liste/$(d.profId)).data.matieres.size() == 0
+                || d.matiere in get(/databases/$(database)/documents/profs_liste/$(d.profId)).data.matieres));
     }
     match /cours/{id} {
       allow read: if true;

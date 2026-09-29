@@ -8,7 +8,7 @@ import '../session.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'article.dart';
-import '../professeurs.dart';
+import '../professeurs.dart' as prof;
 import 'cours.dart' as ecours;
 import 'direct.dart';
 import 'emission.dart';
@@ -52,7 +52,7 @@ class _ConnexionState extends State<Connexion> {
       final ed = await Session.chargerEditeur(cred.user!.uid);
       if (ed == null) {
         await FirebaseAuth.instance.signOut();
-        _erreur = "Ce compte n'a pas accès à la rédaction. Demandez au responsable du club.";
+        _erreur = "Ce compte n'a pas accès à la rédaction. Demandez au responsable.";
       } else {
         Session.instance.editeur.value = ed;
       }
@@ -74,7 +74,7 @@ class _ConnexionState extends State<Connexion> {
         padding: const EdgeInsets.all(20),
         children: [
           const Text(
-            "Cet espace est réservé à l'équipe de rédaction du club. Connectez-vous avec le compte que vous a donné le responsable.",
+            "Cet espace est réservé à l'équipe de LFA NEWS. Connectez-vous avec le compte qui vous a été donné.",
             style: TextStyle(fontSize: 15, height: 1.5, color: gris),
           ),
           const SizedBox(height: 20),
@@ -122,6 +122,8 @@ class _EspaceMembre extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (ed.role == 'professeur') return _EspaceProfesseur(ed: ed);
+
     final col = FirebaseFirestore.instance.collection('propositions');
     final Query<Map<String, dynamic>> requete = col.where('auteurId', isEqualTo: ed.uid);
     return Scaffold(
@@ -141,48 +143,44 @@ class _EspaceMembre extends StatelessWidget {
           const SizedBox(height: 4),
           Text('Bonjour ${ed.nom}', style: titre(22)),
           const SizedBox(height: 4),
-          Text(ed.role == 'professeur' ? 'Professeur' : 'Rédacteur du club', style: const TextStyle(color: gris)),
+          const Text('Rédacteur du club', style: TextStyle(color: gris)),
           const SizedBox(height: 18),
-          if (ed.role != 'professeur')
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => Redaction(editeur: ed))),
-              icon: const Icon(Icons.add),
-              label: const Text('Nouvel article'),
-            ),
-          if (ed.role != 'professeur') ...[
-            const SizedBox(height: 26),
-            const Text('Mes articles en attente de validation',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: requete.snapshots(),
-              builder: (context, snap) {
-                if (snap.hasError) return messageVide('Impossible de charger la liste.');
-                if (!snap.hasData) {
-                  return const Padding(
-                      padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
-                }
-                final liste = snap.data!.docs.map(Article.fromDoc).toList()
-                  ..sort((x, y) => y.date.compareTo(x.date));
-                if (liste.isEmpty) {
-                  return messageVide('Aucun article en attente. Vos articles validés apparaissent sur l’accueil.');
-                }
-                return Column(
-                  children: [
-                    for (final a in liste)
-                      LigneArticle(
-                        article: a,
-                        etiquette: a.categorie,
-                        onTap: () => Navigator.of(context)
-                            .push(MaterialPageRoute(builder: (_) => PageArticle(article: a))),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-          if (ed.peutCours) _SectionMesCours(ed: ed),
+          FilledButton.icon(
+            onPressed: () =>
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => Redaction(editeur: ed))),
+            icon: const Icon(Icons.add),
+            label: const Text('Nouvel article'),
+          ),
+          const SizedBox(height: 26),
+          const Text('Mes articles en attente de validation',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: requete.snapshots(),
+            builder: (context, snap) {
+              if (snap.hasError) return messageVide('Impossible de charger la liste.');
+              if (!snap.hasData) {
+                return const Padding(
+                    padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+              }
+              final liste = snap.data!.docs.map(Article.fromDoc).toList()
+                ..sort((x, y) => y.date.compareTo(x.date));
+              if (liste.isEmpty) {
+                return messageVide('Aucun article en attente. Vos articles validés apparaissent sur l’accueil.');
+              }
+              return Column(
+                children: [
+                  for (final a in liste)
+                    LigneArticle(
+                      article: a,
+                      etiquette: a.categorie,
+                      onTap: () => Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => PageArticle(article: a))),
+                    ),
+                ],
+              );
+            },
+          ),
           const SizedBox(height: 24),
         ],
       ),
@@ -190,6 +188,137 @@ class _EspaceMembre extends StatelessWidget {
   }
 }
 
+/// Le compte des professeurs est partagé : une fois connecté, chacun touche
+/// son nom, retenu pour la durée de la session (jusqu'à la déconnexion).
+class _EspaceProfesseur extends StatelessWidget {
+  const _EspaceProfesseur({required this.ed});
+  final Editeur ed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ProfNomme?>(
+      valueListenable: Session.instance.profActif,
+      builder: (context, actif, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Rédaction', style: titre(22)),
+            actions: [
+              IconButton(
+                tooltip: 'Se déconnecter',
+                icon: const Icon(Icons.logout),
+                onPressed: () => FirebaseAuth.instance.signOut(),
+              ),
+            ],
+          ),
+          body: actif == null
+              ? const prof.ChoixProfesseur()
+              : ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    const SizedBox(height: 4),
+                    Text('Bonjour ${actif.nom}', style: titre(22)),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Text('Professeur', style: TextStyle(color: gris)),
+                        const SizedBox(width: 10),
+                        TextButton(
+                          onPressed: () => Session.instance.profActif.value = null,
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 24)),
+                          child: const Text('Changer de nom', style: TextStyle(fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                    _SectionMesCoursParNom(ed: ed, nom: actif.nom),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+/// Cours d'un professeur identifié par son nom (compte partagé).
+class _SectionMesCoursParNom extends StatelessWidget {
+  const _SectionMesCoursParNom({required this.ed, required this.nom});
+  final Editeur ed;
+  final String nom;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 26),
+        const Text('Mes cours', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        const Text('Touchez ⋮ pour modifier ou supprimer un cours.', style: TextStyle(fontSize: 13, color: gris)),
+        const SizedBox(height: 6),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('cours').where('auteurNom', isEqualTo: nom).snapshots(),
+          builder: (context, snap) {
+            if (snap.hasError) return messageVide('Impossible de charger vos cours.');
+            if (!snap.hasData) {
+              return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+            }
+            final mesCours = snap.data!.docs.map(Cours.fromDoc).toList()..sort((a, b) => b.date.compareTo(a.date));
+            if (mesCours.isEmpty) {
+              return messageVide('Aucun cours ajouté pour le moment.', icone: Icons.menu_book_outlined);
+            }
+            return Column(
+              children: [
+                for (final c in mesCours)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                        backgroundColor: vertPale, child: Icon(Icons.menu_book_outlined, color: vert)),
+                    title: Text(c.titre, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    subtitle: Text(
+                      c.serie.isEmpty ? '${c.matiere} · ${c.niveau}' : '${c.matiere} · ${c.niveau} série ${c.serie}',
+                      style: const TextStyle(fontSize: 12, color: gris),
+                    ),
+                    onTap: () =>
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => ecours.LectureCours(cours: c))),
+                    trailing: PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: gris),
+                      onSelected: (v) async {
+                        if (v == 'modifier') {
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => ecours.EditerCours(
+                                  editeur: ed, niveau: c.niveau, matiere: c.matiere, serie: c.serie, existant: c)));
+                        } else {
+                          final oui = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Supprimer ce cours ?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Supprimer')),
+                              ],
+                            ),
+                          );
+                          if (oui == true) {
+                            await FirebaseFirestore.instance.collection('cours').doc(c.id).delete();
+                          }
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'modifier', child: Text('Modifier')),
+                        PopupMenuItem(value: 'supprimer', child: Text('Supprimer')),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Liste des cours d'un professeur, ou de tous pour l'administrateur.
 /// Liste des cours d'un professeur, ou de tous pour l'administrateur.
 class _SectionMesCours extends StatelessWidget {
   const _SectionMesCours({required this.ed});
@@ -475,7 +604,9 @@ class _EspaceAdminState extends State<_EspaceAdmin> with SingleTickerProviderSta
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         const SizedBox(height: 16),
-        const ListeProfesseurs(),
+        const prof.CompteProfesseurs(),
+        const SizedBox(height: 22),
+        const prof.ListeProfesseurs(),
         const SizedBox(height: 28),
         _SectionMesCours(ed: ed),
         const SizedBox(height: 8),

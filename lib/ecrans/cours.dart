@@ -31,7 +31,9 @@ class _Cours0State extends State<Cours0> {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<Editeur?>(
       valueListenable: Session.instance.editeur,
-      builder: (context, ed, _) {
+      builder: (context, ed, _) => ValueListenableBuilder<ProfNomme?>(
+        valueListenable: Session.instance.profActif,
+        builder: (context, _, __) {
         Widget corps;
         String titreEcran = 'Cours';
         if (_niveau == null) {
@@ -62,6 +64,7 @@ class _Cours0State extends State<Cours0> {
             title: Text(titreEcran, style: titre(20)),
           ),
           floatingActionButton: (ed?.peutCours ?? false) &&
+                  (ed!.role != 'professeur' || Session.instance.profActif.value != null) &&
                   _niveau != null &&
                   _matiere != null &&
                   (!_attendSerie || _serie != null)
@@ -78,14 +81,16 @@ class _Cours0State extends State<Cours0> {
           body: corps,
         );
       },
+      ),
     );
   }
 
   Widget _listeNiveaux(Editeur? ed) {
-    // Un professeur limité à certains niveaux ne voit que ceux-là,
-    // et seulement dans cette page (l'accueil de LFA News reste ouvert à tous en lecture).
-    final restreint = ed != null && ed.role == 'professeur' && ed.niveaux.isNotEmpty;
-    final liste = restreint ? niveaux.where((n) => ed.niveaux.contains(n)).toList() : niveaux;
+    // Le compte professeur est partagé : la restriction vient du nom choisi
+    // dans l'onglet Rédaction, pas du compte lui-même.
+    final actif = (ed?.role == 'professeur') ? Session.instance.profActif.value : null;
+    final restreint = actif != null && actif.niveaux.isNotEmpty;
+    final liste = restreint ? niveaux.where((n) => actif.niveaux.contains(n)).toList() : niveaux;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
@@ -99,8 +104,9 @@ class _Cours0State extends State<Cours0> {
 
   Widget _listeMatieres(Editeur? ed) {
     var liste = matieresPour(_niveau!);
-    final restreint = ed != null && ed.role == 'professeur' && ed.matieres.isNotEmpty;
-    if (restreint) liste = liste.where((m) => ed.matieres.contains(m)).toList();
+    final actif = (ed?.role == 'professeur') ? Session.instance.profActif.value : null;
+    final restreint = actif != null && actif.matieres.isNotEmpty;
+    if (restreint) liste = liste.where((m) => actif.matieres.contains(m)).toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
@@ -467,6 +473,7 @@ class _EditerCoursState extends State<EditerCours> {
     setState(() => _envoi = true);
     try {
       String id;
+      final actif = (widget.editeur.role == 'professeur') ? Session.instance.profActif.value : null;
       if (widget.existant == null) {
         final ref = await _cours.add({
           'niveau': widget.niveau,
@@ -476,7 +483,8 @@ class _EditerCoursState extends State<EditerCours> {
           'texte': _texte.text.trim(),
           'exercices': _exercicesEnMap(),
           'auteurId': widget.editeur.uid,
-          'auteurNom': widget.editeur.nom,
+          'auteurNom': actif?.nom ?? widget.editeur.nom,
+          'profId': actif?.id ?? '',
           'date': FieldValue.serverTimestamp(),
         });
         id = ref.id;

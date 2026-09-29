@@ -32,6 +32,7 @@ class _RedactionState extends State<Redaction> {
   static const _maxPhotos = 4;
 
   late String _categorie = widget.existant?.categorie ?? categories[1];
+  late final _nomAuteur = TextEditingController(text: widget.existant?.auteurNom ?? widget.editeur.nom);
   late final _titre = TextEditingController(text: widget.existant?.titre ?? '');
   late final _texte = TextEditingController(text: widget.existant?.texte ?? '');
   late final _personne = TextEditingController(text: widget.existant?.personne ?? '');
@@ -96,6 +97,7 @@ class _RedactionState extends State<Redaction> {
   }
 
   String? _verifier() {
+    if (_nomAuteur.text.trim().isEmpty) return 'Indiquez votre nom : il sera affiché comme signature.';
     if (_titre.text.trim().isEmpty) return 'Ajoutez un titre.';
     if (_video.text.trim().isNotEmpty && idYoutube(_video.text) == null) {
       return 'Lien YouTube non reconnu. Copiez-le depuis le bouton Partager de YouTube.';
@@ -120,6 +122,7 @@ class _RedactionState extends State<Redaction> {
     }
     setState(() => _envoi = true);
     final champs = <String, dynamic>{
+      'auteurNom': _nomAuteur.text.trim(),
       'titre': _titre.text.trim(),
       'texte': _texte.text.trim(),
       'categorie': _categorie,
@@ -184,6 +187,13 @@ class _RedactionState extends State<Redaction> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
         children: [
+          _etiquette('Votre nom'),
+          TextField(
+            controller: _nomAuteur,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(hintText: 'Prénom et nom, affichés comme signature de l’article'),
+          ),
+          _espace(),
           _etiquette('Rubrique'),
           DropdownButtonFormField<String>(
             initialValue: _categorie,

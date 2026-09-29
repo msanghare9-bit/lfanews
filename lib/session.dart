@@ -15,16 +15,30 @@ class Editeur {
   bool get peutCours => role == 'admin' || role == 'professeur';
 }
 
+/// Un nom de professeur, avec les niveaux et matières où il peut écrire.
+class ProfNomme {
+  ProfNomme(this.id, this.nom, this.niveaux, this.matieres);
+  final String id;
+  final String nom;
+  final List<String> niveaux;
+  final List<String> matieres;
+}
+
 class Session {
   Session._();
   static final instance = Session._();
 
   final editeur = ValueNotifier<Editeur?>(null);
 
+  /// Quand plusieurs professeurs partagent un même compte : celui qui a
+  /// choisi son nom pour la session en cours (remis à zéro à la déconnexion).
+  final profActif = ValueNotifier<ProfNomme?>(null);
+
   void demarrer() {
     FirebaseAuth.instance.authStateChanges().listen((u) async {
       if (u == null) {
         editeur.value = null;
+        profActif.value = null;
         return;
       }
       editeur.value = await chargerEditeur(u.uid);

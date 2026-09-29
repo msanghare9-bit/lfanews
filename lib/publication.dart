@@ -59,10 +59,10 @@ Future<bool> enregistrer({
   if (existant == null) {
     data.addAll({
       'auteurId': ed.uid,
-      'auteurNom': ed.nom,
       'date': FieldValue.serverTimestamp(),
       'notifie': false,
     });
+    data.putIfAbsent('auteurNom', () => ed.nom);
     lot.set(ref, data);
   } else {
     lot.update(ref, data);

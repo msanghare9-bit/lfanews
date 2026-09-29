@@ -73,7 +73,7 @@ class _AccueilState extends State<Accueil> {
               NavigationDestination(
                   icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book, color: vert), label: 'Cours'),
               NavigationDestination(
-                  icon: Icon(Icons.edit_outlined), selectedIcon: Icon(Icons.edit, color: vert), label: 'Rédaction'),
+                  icon: Icon(Icons.edit_outlined), selectedIcon: Icon(Icons.edit, color: vert), label: 'Se connecter'),
             ],
           ),
         );

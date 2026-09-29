@@ -14,6 +14,7 @@ import '../modeles.dart';
 import '../session.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'espace.dart';
 
 const _messageParDefaut =
     'Bienvenue sur LFA News, le journal du Lycée Franco-Arabe de Kébémer. Ici, vous trouverez les annonces '
@@ -183,6 +184,22 @@ class _PageAProposState extends State<PageAPropos> with SingleTickerProviderStat
               const Center(
                 child: Text('Le journal du Lycée Franco-Arabe de Kébémer',
                     textAlign: TextAlign.center, style: TextStyle(fontSize: 15, color: gris)),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EspaceRedaction())),
+                  icon: const Icon(Icons.login),
+                  label: const Text('Se connecter'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    foregroundColor: vert,
+                    side: const BorderSide(color: vert),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               StreamBuilder<Bienvenue>(

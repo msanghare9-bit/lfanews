@@ -8,7 +8,7 @@ const categories = [
   'Vie scolaire',
   'Sport',
   'Rencontre',
-  'Actu Kébémer',
+  'Ici et ailleurs',
   'Culture générale',
   'Chronique',
   'Pour rire',

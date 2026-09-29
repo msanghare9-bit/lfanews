@@ -182,18 +182,19 @@ class _ListeVideosState extends State<ListeVideos> {
   }
 
   Widget _carte(BuildContext context, VideoLfa v, bool admin) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PageVideo(video: v))),
-        borderRadius: BorderRadius.circular(14),
-        child: Column(
+    return InkWell(
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PageVideo(video: v))),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 104,
+                height: 80,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -206,48 +207,47 @@ class _ListeVideosState extends State<ListeVideos> {
                     Container(color: const Color(0x26000000)),
                     Center(
                       child: Container(
-                        width: 52,
-                        height: 52,
+                        width: 30,
+                        height: 30,
                         decoration: const BoxDecoration(color: Color(0xE6FFFFFF), shape: BoxShape.circle),
-                        child: const Icon(Icons.play_arrow_rounded, size: 34, color: vert),
+                        child: const Icon(Icons.play_arrow_rounded, size: 20, color: vert),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(v.type, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: vert)),
-                      const SizedBox(height: 2),
-                      Text(v.titre, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, height: 1.25)),
-                      const SizedBox(height: 3),
-                      Text(dateFr(v.date), style: const TextStyle(fontSize: 12, color: gris)),
-                    ],
-                  ),
-                ),
-                if (admin)
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: gris),
-                    onSelected: (a) {
-                      if (a == 'modifier') {
-                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditerVideo(video: v)));
-                      } else {
-                        _supprimer(context, v);
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'modifier', child: Text('Modifier')),
-                      PopupMenuItem(value: 'supprimer', child: Text('Supprimer')),
-                    ],
-                  ),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(v.type, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: vert)),
+                  const SizedBox(height: 3),
+                  Text(v.titre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1.25)),
+                  const SizedBox(height: 4),
+                  Text(dateFr(v.date), style: const TextStyle(fontSize: 12, color: gris)),
+                ],
+              ),
             ),
+            if (admin)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: gris),
+                onSelected: (a) {
+                  if (a == 'modifier') {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditerVideo(video: v)));
+                  } else {
+                    _supprimer(context, v);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'modifier', child: Text('Modifier')),
+                  PopupMenuItem(value: 'supprimer', child: Text('Supprimer')),
+                ],
+              ),
           ],
         ),
       ),

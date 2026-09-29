@@ -15,7 +15,7 @@ import 'direct.dart';
 import '../maj.dart';
 import 'emission.dart';
 import 'videos.dart';
-import 'espace.dart';
+
 import 'recherche.dart';
 
 class Accueil extends StatefulWidget {
@@ -58,7 +58,6 @@ class _AccueilState extends State<Accueil> {
               _fil(snap, articles),
               Recherche(articles: articles),
               const Cours0(),
-              const EspaceRedaction(),
             ],
           ),
           bottomNavigationBar: NavigationBar(
@@ -73,8 +72,6 @@ class _AccueilState extends State<Accueil> {
                   icon: Icon(Icons.search), selectedIcon: Icon(Icons.search, color: vert), label: 'Rechercher'),
               NavigationDestination(
                   icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book, color: vert), label: 'Cours'),
-              NavigationDestination(
-                  icon: Icon(Icons.edit_outlined), selectedIcon: Icon(Icons.edit, color: vert), label: 'Se connecter'),
             ],
           ),
         );

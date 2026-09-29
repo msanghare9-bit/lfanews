@@ -74,21 +74,18 @@ class ListeProfesseurs extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text('Professeurs', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                ),
-                FilledButton.icon(
-                  onPressed: () =>
-                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AjouterProfesseur())),
-                  icon: const Icon(Icons.person_add_alt, size: 18),
-                  label: const Text('Ajouter'),
-                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14)),
-                ),
-              ],
+            const Text('Professeurs', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () =>
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AjouterProfesseur())),
+                icon: const Icon(Icons.person_add_alt, size: 18),
+                label: const Text('Ajouter un professeur'),
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             if (liste.isEmpty)
               messageVide('Aucun professeur ajouté pour le moment.', icone: Icons.person_outline),
             for (final p in liste)

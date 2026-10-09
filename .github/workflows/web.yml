@@ -1,0 +1,76 @@
+name: Publier le site web (iPhone)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - 'scripts/prepare_web.py'
+      - 'scripts/config_web.py'
+      - '.github/workflows/web.yml'
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: pip install google-auth requests pillow
+
+      - name: Configuration Firebase web
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: python3 scripts/config_web.py
+
+      - name: Créer le projet web
+        run: |
+          flutter create --org sn.lfakebemer --project-name lfanews --platforms web --no-pub app_web
+          rm -rf app_web/lib app_web/test
+          cp -r lib app_web/lib
+          cp -r assets app_web/assets
+          cp pubspec.yaml app_web/pubspec.yaml
+          python3 scripts/prepare_web.py
+
+      - name: Construire le site
+        working-directory: app_web
+        shell: bash
+        run: |
+          flutter pub get 2>&1 | tee /tmp/build_log.txt
+          flutter build web --release 2>&1 | tee -a /tmp/build_log.txt
+
+      - name: Journal en cas d'échec
+        if: failure()
+        run: |
+          { grep -nE "Error|error:|Exception|FAILURE" /tmp/build_log.txt | head -60; echo ===; tail -n 80 /tmp/build_log.txt; } > /tmp/resume.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout --orphan journal-web
+          git rm -rf --quiet . || true
+          cp /tmp/resume.txt build_log.txt
+          git add build_log.txt
+          git commit -q -m "Journal web ${{ github.run_number }}"
+          git push -f origin journal-web
+
+      - name: Publier sur Firebase Hosting
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: |
+          echo "$FIREBASE_SA" > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          PROJ=$(python3 -c "import json;print(json.load(open('/tmp/sa.json'))['project_id'])")
+          cat > app_web/firebase.json <<JSON
+          {"hosting":{"site":"$PROJ","public":"build/web","ignore":["firebase.json"],
+           "headers":[{"source":"/index.html","headers":[{"key":"Cache-Control","value":"no-cache"}]},
+                      {"source":"/flutter_service_worker.js","headers":[{"key":"Cache-Control","value":"no-cache"}]}]}}
+          JSON
+          cd app_web
+          npx --yes firebase-tools@13 deploy --only hosting --project "$PROJ" --non-interactive 2>&1 | tee /tmp/deploy.txt
+          echo "URL: https://$PROJ.web.app"

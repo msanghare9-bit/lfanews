@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -35,6 +36,7 @@ bool _estPlusRecente(String distante, String locale) {
 /// Vérifie s'il existe une version plus récente sur GitHub. Renvoie null si
 /// l'application est à jour, sans connexion, ou en cas d'erreur.
 Future<InfoMiseAJour?> verifierMiseAJour() async {
+  if (kIsWeb) return null;
   try {
     final actuelle = (await PackageInfo.fromPlatform()).version;
     final r = await http

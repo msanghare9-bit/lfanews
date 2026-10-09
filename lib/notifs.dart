@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -12,6 +13,7 @@ import 'ecrans/emission.dart';
 import 'modeles.dart';
 
 Future<void> initNotifications() async {
+  if (kIsWeb) return;
   try {
     final m = FirebaseMessaging.instance;
     await m.requestPermission();

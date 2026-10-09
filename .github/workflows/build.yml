@@ -10,6 +10,9 @@ on:
       - '.github/workflows/notifier.yml'
       - 'firestore.rules'
       - 'README.md'
+      - 'scripts/prepare_web.py'
+      - 'scripts/config_web.py'
+      - '.github/workflows/web.yml'
   workflow_dispatch:
 
 jobs:
